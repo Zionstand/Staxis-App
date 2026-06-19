@@ -96,3 +96,46 @@ export const NewPasswordSchema = z
   });
 
 export type NewPasswordSchemaType = z.infer<typeof NewPasswordSchema>;
+
+export const ChangePasswordSchema = z
+  .object({
+    currentPassword: z
+      .string()
+      .min(1, { message: 'Enter your current password.' }),
+    newPassword: z
+      .string()
+      .min(8, { message: 'Password must be at least 8 characters.' })
+      .refine((val) => /[a-z]/.test(val), {
+        message: 'Password must contain at least one lowercase letter.',
+      })
+      .refine((val) => /[A-Z]/.test(val), {
+        message: 'Password must contain at least one uppercase letter.',
+      })
+      .refine((val) => /[0-9]/.test(val), {
+        message: 'Password must contain at least one number.',
+      })
+      .refine((val) => /[!@#$%^&*(),.?":{}|<>]/.test(val), {
+        message: 'Password must contain at least one special character.',
+      }),
+    confirmPassword: z.string().min(2, { message: 'Confirm your new password.' }),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
+
+export type ChangePasswordSchemaType = z.infer<typeof ChangePasswordSchema>;
+
+export const CreateTicketSchema = z.object({
+  subject: z
+    .string()
+    .min(3, { message: 'Subject must be at least 3 characters.' })
+    .max(150, { message: 'Subject must be 150 characters or fewer.' }),
+  description: z
+    .string()
+    .min(10, { message: 'Please describe your issue (at least 10 characters).' }),
+  category: z.enum(['GENERAL', 'BILLING', 'TECHNICAL', 'FEATURE_REQUEST']),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']),
+});
+
+export type CreateTicketSchemaType = z.infer<typeof CreateTicketSchema>;

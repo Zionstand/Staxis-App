@@ -191,58 +191,75 @@ export default function HomeScreen() {
           </ThemedView>
         )}
 
-        <StatCard label="Active Plan" title={planLabel} sub={renewalSub}>
-          {(isTrial || (paymentVerified && daysToRenewal !== null)) && (
-            <>
-              <View style={styles.row}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {isTrial ? 'Trial usage' : 'Billing cycle'}
-                </ThemedText>
-                <ThemedText type="smallBold">
-                  {isTrial ? `${trialDaysLeft}d left` : `${daysToRenewal}d left`}
-                </ThemedText>
-              </View>
-              <ProgressBar value={isTrial ? trialProgress : renewalProgress} />
-            </>
-          )}
-          <View style={styles.row}>
-            <Badge label={status} bg={statusStyle.bg} color={statusStyle.color} />
-            {paymentVerified ? (
-              <Badge label="PAID" bg="#dbeafe" color="#1d4ed8" />
-            ) : (
-              <Badge label="UNPAID" bg="#fef3c7" color="#b45309" />
+        <Pressable
+          onPress={() => router.push('/(tabs)/billing')}
+          style={({ pressed }) => pressed && styles.pressed}>
+          <StatCard label="Active Plan" title={planLabel} sub={renewalSub}>
+            {(isTrial || (paymentVerified && daysToRenewal !== null)) && (
+              <>
+                <View style={styles.row}>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {isTrial ? 'Trial usage' : 'Billing cycle'}
+                  </ThemedText>
+                  <ThemedText type="smallBold">
+                    {isTrial ? `${trialDaysLeft}d left` : `${daysToRenewal}d left`}
+                  </ThemedText>
+                </View>
+                <ProgressBar value={isTrial ? trialProgress : renewalProgress} />
+              </>
             )}
-          </View>
-        </StatCard>
+            <View style={styles.row}>
+              <Badge label={status} bg={statusStyle.bg} color={statusStyle.color} />
+              {paymentVerified ? (
+                <Badge label="PAID" bg="#dbeafe" color="#1d4ed8" />
+              ) : (
+                <Badge label="UNPAID" bg="#fef3c7" color="#b45309" />
+              )}
+            </View>
+          </StatCard>
+        </Pressable>
 
-        <StatCard
-          label="Support Tickets"
-          title={String(openTickets)}
-          sub={openTickets > 0 ? 'Awaiting resolution' : 'No open tickets'}>
-          <ThemedText type="small" themeColor="textSecondary">
-            ✓ {resolvedTickets} resolved
-          </ThemedText>
-        </StatCard>
+        <Pressable
+          onPress={() => router.push('/(tabs)/tickets')}
+          style={({ pressed }) => pressed && styles.pressed}>
+          <StatCard
+            label="Support Tickets"
+            title={String(openTickets)}
+            sub={openTickets > 0 ? 'Awaiting resolution' : 'No open tickets'}>
+            <View style={styles.row}>
+              <ThemedText type="small" themeColor="textSecondary">
+                ✓ {resolvedTickets} resolved
+              </ThemedText>
+              <ThemedText type="link" themeColor="textSecondary">
+                View all ›
+              </ThemedText>
+            </View>
+          </StatCard>
+        </Pressable>
 
-        <StatCard
-          label="Monthly Spend"
-          title={amount > 0 ? `₦${amount.toLocaleString()}/mo` : 'No subscription'}
-          sub={
-            company?.bundleDiscount && company.bundleDiscount > 0
-              ? `Bundle savings: ₦${company.bundleDiscount.toLocaleString()}/mo`
-              : 'Standard pricing'
-          }>
-          <View style={styles.row}>
+        <Pressable
+          onPress={() => router.push('/(tabs)/billing')}
+          style={({ pressed }) => pressed && styles.pressed}>
+          <StatCard
+            label="Monthly Spend"
+            title={amount > 0 ? `₦${amount.toLocaleString()}/mo` : 'No subscription'}
+            sub={
+              company?.bundleDiscount && company.bundleDiscount > 0
+                ? `Bundle savings: ₦${company.bundleDiscount.toLocaleString()}/mo`
+                : 'Standard pricing'
+            }>
+            <View style={styles.row}>
+              <ThemedText type="small" themeColor="textSecondary">
+                Total spent (lifetime)
+              </ThemedText>
+              <ThemedText type="smallBold">₦{totalSpent.toLocaleString()}</ThemedText>
+            </View>
+            <ProgressBar value={99.9} fillColor="#94a3b8" trackColor="#e2e8f0" />
             <ThemedText type="small" themeColor="textSecondary">
-              Total spent (lifetime)
+              99.9% uptime guarantee
             </ThemedText>
-            <ThemedText type="smallBold">₦{totalSpent.toLocaleString()}</ThemedText>
-          </View>
-          <ProgressBar value={99.9} fillColor="#94a3b8" trackColor="#e2e8f0" />
-          <ThemedText type="small" themeColor="textSecondary">
-            99.9% uptime guarantee
-          </ThemedText>
-        </StatCard>
+          </StatCard>
+        </Pressable>
 
         <StatCard
           label="Your IT Manager"
@@ -308,6 +325,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.two,
+  },
+  pressed: {
+    opacity: 0.7,
   },
   banner: {
     borderRadius: Spacing.three,
