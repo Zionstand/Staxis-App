@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { Stack, router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
@@ -80,9 +80,12 @@ export default function ProfileScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  // Reload on focus so edits made on the Edit Profile screen show on return.
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -124,6 +127,19 @@ export default function ProfileScreen() {
       style={styles.scrollView}
       contentContainerStyle={styles.contentContainer}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <Pressable
+              onPress={() => router.push('/(tabs)/profile/edit')}
+              hitSlop={8}>
+              <ThemedText type="smallBold" themeColor="text">
+                Edit
+              </ThemedText>
+            </Pressable>
+          ),
+        }}
+      />
       <View style={styles.inner}>
         <View style={styles.identity}>
           {image ? (
@@ -184,9 +200,16 @@ export default function ProfileScreen() {
         {/* Company */}
         {company && (
           <View style={styles.section}>
-            <ThemedText type="smallBold" style={styles.sectionLabel}>
-              Company
-            </ThemedText>
+            <View style={styles.sectionHeader}>
+              <ThemedText type="smallBold" style={styles.sectionLabel}>
+                Company
+              </ThemedText>
+              <Pressable
+                onPress={() => router.push('/(tabs)/profile/edit-company')}
+                hitSlop={8}>
+                <ThemedText type="linkPrimary">Edit</ThemedText>
+              </Pressable>
+            </View>
             <ThemedView type="backgroundElement" style={styles.card}>
               <InfoRow label="Name" value={company.name} />
               <InfoRow label="Industry" value={company.industry} />
@@ -305,6 +328,11 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     marginLeft: Spacing.one,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   card: {
     borderRadius: Spacing.three,

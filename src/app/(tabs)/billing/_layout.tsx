@@ -2,7 +2,7 @@ import { Stack } from 'expo-router';
 
 import { useTheme } from '@/hooks/use-theme';
 
-export default function ProfileLayout() {
+export default function BillingLayout() {
   const theme = useTheme();
 
   return (
@@ -13,10 +13,9 @@ export default function ProfileLayout() {
         headerShadowVisible: false,
         contentStyle: { backgroundColor: theme.background },
       }}>
-      <Stack.Screen name="index" options={{ title: 'Profile' }} />
-      <Stack.Screen name="edit" options={{ title: 'Edit Profile' }} />
-      <Stack.Screen name="edit-company" options={{ title: 'Edit Company' }} />
-      <Stack.Screen name="change-password" options={{ title: 'Change Password' }} />
+      {/* The overview keeps its own in-screen header. */}
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="transactions" options={{ title: 'Transactions' }} />
     </Stack>
   );
 }
