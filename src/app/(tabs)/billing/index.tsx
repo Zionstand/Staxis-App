@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -13,10 +14,11 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Badge } from '@/components/ui/badge';
 import { ProgressBar } from '@/components/ui/progress-bar';
+import { TxnRow } from '@/components/ui/txn-row';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { fetchData } from '@/lib/api';
-import { ApiPlan, DashboardData, Transaction } from '@/lib/types';
+import { ApiPlan, DashboardData } from '@/lib/types';
 import { daysUntil, fmtDate, fmtNaira } from '@/lib/utils';
 
 const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
@@ -25,16 +27,6 @@ const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
   PAST_DUE: { bg: '#ffe4e6', color: '#be123c' },
   CANCELLED: { bg: '#e2e8f0', color: '#475569' },
 };
-
-const TXN_STYLES: Record<string, { bg: string; color: string }> = {
-  Paid: { bg: '#dcfce7', color: '#15803d' },
-  Pending: { bg: '#fef3c7', color: '#b45309' },
-  Failed: { bg: '#ffe4e6', color: '#be123c' },
-};
-
-function txnStyle(status: string) {
-  return TXN_STYLES[status] ?? { bg: '#f1f5f9', color: '#64748b' };
-}
 
 function PlanRow({ plan }: { plan: ApiPlan }) {
   return (
@@ -64,26 +56,6 @@ function PlanRow({ plan }: { plan: ApiPlan }) {
   );
 }
 
-function TxnRow({ txn }: { txn: Transaction }) {
-  const ts = txnStyle(txn.status);
-  return (
-    <View style={styles.txnRow}>
-      <View style={styles.txnInfo}>
-        <ThemedText type="small" numberOfLines={1}>
-          {txn.description}
-        </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          {fmtDate(txn.date)}
-        </ThemedText>
-      </View>
-      <View style={styles.txnRight}>
-        <ThemedText type="smallBold">{fmtNaira(txn.amount)}</ThemedText>
-        <Badge label={txn.status} bg={ts.bg} color={ts.color} />
-      </View>
-    </View>
-  );
-}
-
 export default function BillingScreen() {
   const theme = useTheme();
 
@@ -105,16 +77,18 @@ export default function BillingScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
     load();
   };
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <ThemedView style={styles.centered}>
         <ActivityIndicator />
@@ -300,16 +274,23 @@ export default function BillingScreen() {
               </View>
               <ThemedView type="backgroundElement" style={styles.card}>
                 {transactions.length > 0 ? (
-                  transactions.map((t, i) => (
-                    <View key={t.id}>
-                      {i > 0 && (
-                        <View
-                          style={[styles.divider, { backgroundColor: theme.backgroundSelected }]}
-                        />
-                      )}
-                      <TxnRow txn={t} />
-                    </View>
-                  ))
+                  <>
+                    {transactions.map((t, i) => (
+                      <View key={t.id}>
+                        {i > 0 && (
+                          <View
+                            style={[styles.divider, { backgroundColor: theme.backgroundSelected }]}
+                          />
+                        )}
+                        <TxnRow txn={t} />
+                      </View>
+                    ))}
+                    <Pressable
+                      onPress={() => router.push('/(tabs)/billing/transactions')}
+                      style={({ pressed }) => [styles.viewAll, pressed && styles.pressed]}>
+                      <ThemedText type="linkPrimary">View all payments</ThemedText>
+                    </Pressable>
+                  </>
                 ) : (
                   <ThemedText type="small" themeColor="textSecondary">
                     No payments yet.
@@ -391,24 +372,16 @@ const styles = StyleSheet.create({
   warnText: {
     color: '#be123c',
   },
-  txnRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
-    paddingVertical: Spacing.one,
-  },
-  txnInfo: {
-    flexShrink: 1,
-    gap: Spacing.half,
-  },
-  txnRight: {
-    alignItems: 'flex-end',
-    gap: Spacing.half,
-  },
   divider: {
     height: StyleSheet.hairlineWidth,
     marginVertical: Spacing.one,
+  },
+  viewAll: {
+    marginTop: Spacing.one,
+    alignItems: 'center',
+  },
+  pressed: {
+    opacity: 0.6,
   },
   footnote: {
     marginTop: Spacing.one,

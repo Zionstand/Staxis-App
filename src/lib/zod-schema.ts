@@ -97,6 +97,45 @@ export const NewPasswordSchema = z
 
 export type NewPasswordSchemaType = z.infer<typeof NewPasswordSchema>;
 
+export const EditProfileSchema = z.object({
+  firstName: z
+    .string()
+    .min(2, { message: 'First name must be at least 2 characters' }),
+  lastName: z
+    .string()
+    .min(2, { message: 'Last name must be at least 2 characters' }),
+  phoneNumber: z
+    .string()
+    .regex(/^(\+?\d{10,15})$/, { message: 'Enter a valid phone number.' })
+    .or(z.literal('')),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  country: z.string().optional(),
+});
+
+export type EditProfileSchemaType = z.infer<typeof EditProfileSchema>;
+
+export const EditCompanySchema = z.object({
+  companyName: z
+    .string()
+    .min(2, { message: 'Company name must be at least 2 characters' }),
+  website: z
+    .string()
+    .url({ message: 'Enter a valid URL (https://…)' })
+    .or(z.literal('')),
+  industry: z.string().optional(),
+  companySize: z.string().optional(),
+  companyPhone: z.string().optional(),
+  rcNumber: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  country: z.string().optional(),
+});
+
+export type EditCompanySchemaType = z.infer<typeof EditCompanySchema>;
+
 export const ChangePasswordSchema = z
   .object({
     currentPassword: z

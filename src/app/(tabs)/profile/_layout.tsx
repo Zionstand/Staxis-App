@@ -14,6 +14,8 @@ export default function ProfileLayout() {
         contentStyle: { backgroundColor: theme.background },
       }}>
       <Stack.Screen name="index" options={{ title: 'Profile' }} />
+      <Stack.Screen name="edit" options={{ title: 'Edit Profile' }} />
+      <Stack.Screen name="edit-company" options={{ title: 'Edit Company' }} />
       <Stack.Screen name="change-password" options={{ title: 'Change Password' }} />
     </Stack>
   );

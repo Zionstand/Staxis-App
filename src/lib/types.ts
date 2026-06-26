@@ -45,6 +45,14 @@ export interface Transaction {
   type: string;
 }
 
+export interface TransactionsPage {
+  transactions: Transaction[];
+  total: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
+}
+
 export interface DashboardData {
   company: Company | null;
   transactions: Transaction[];
