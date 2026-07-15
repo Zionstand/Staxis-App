@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 
+import { Mark } from '@/components/logo';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TxnRow } from '@/components/ui/txn-row';
@@ -117,6 +118,7 @@ export default function TransactionsScreen() {
       }
       ListEmptyComponent={
         <View style={styles.centered}>
+          <Mark size={52} style={styles.emptyMark} />
           <ThemedText type="small" themeColor="textSecondary">
             No payments yet.
           </ThemedText>
@@ -150,6 +152,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.two,
     paddingTop: Spacing.six,
+  },
+  emptyMark: {
+    opacity: 0.55,
   },
   footer: {
     paddingVertical: Spacing.three,

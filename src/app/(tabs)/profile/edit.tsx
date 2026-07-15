@@ -14,7 +14,7 @@ import {
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedTextInput } from '@/components/ui/themed-text-input';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { BrandPrimary, MaxContentWidth, Spacing } from '@/constants/theme';
 import { fetchData, updateData } from '@/lib/api';
 import { ProfileData } from '@/lib/types';
 import { EditProfileSchema, EditProfileSchemaType } from '@/lib/zod-schema';
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
   button: {
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#208AEF',
+    backgroundColor: BrandPrimary,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: Spacing.two,

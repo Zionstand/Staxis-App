@@ -1,4 +1,4 @@
-import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -10,11 +10,13 @@ import {
   View,
 } from 'react-native';
 
+import { MessageComposer, withAttachments } from '@/components/message-composer';
+import { MarkdownText } from '@/components/markdown-text';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Badge } from '@/components/ui/badge';
-import { ThemedTextInput } from '@/components/ui/themed-text-input';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { BrandPrimary, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useSubscription } from '@/hooks/use-subscription';
 import { useTheme } from '@/hooks/use-theme';
 import { fetchData, postData } from '@/lib/api';
 import {
@@ -38,6 +40,9 @@ type Bubble = {
 function MessageBubble({ bubble }: { bubble: Bubble }) {
   const theme = useTheme();
   const fromUser = bubble.fromUser;
+  // Short messages hug their content (like any chat app); only longer ones get a
+  // width floor so they read as a comfortable block instead of a skinny column.
+  const wide = bubble.body.trim().length > 60;
 
   return (
     <View
@@ -48,8 +53,9 @@ function MessageBubble({ bubble }: { bubble: Bubble }) {
       <View
         style={[
           styles.bubble,
+          wide && styles.bubbleWide,
           {
-            backgroundColor: fromUser ? '#208AEF' : theme.backgroundElement,
+            backgroundColor: fromUser ? BrandPrimary : theme.backgroundElement,
             borderBottomRightRadius: fromUser ? Spacing.half : Spacing.three,
             borderBottomLeftRadius: fromUser ? Spacing.three : Spacing.half,
           },
@@ -60,11 +66,7 @@ function MessageBubble({ bubble }: { bubble: Bubble }) {
           themeColor={fromUser ? undefined : 'textSecondary'}>
           {bubble.author}
         </ThemedText>
-        <ThemedText
-          type="default"
-          style={fromUser ? styles.bubbleTextOnPrimary : undefined}>
-          {bubble.body}
-        </ThemedText>
+        <MarkdownText onPrimary={fromUser}>{bubble.body}</MarkdownText>
         <ThemedText
           type="small"
           style={[styles.bubbleTime, fromUser && styles.bubbleTextOnPrimary]}
@@ -79,12 +81,14 @@ function MessageBubble({ bubble }: { bubble: Bubble }) {
 export default function TicketDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
+  const { canCreateTickets, message } = useSubscription();
   const scrollRef = useRef<ScrollView>(null);
 
   const [data, setData] = useState<TicketDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [body, setBody] = useState('');
+  const [attachments, setAttachments] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
 
   const load = useCallback(async () => {
@@ -107,12 +111,12 @@ export default function TicketDetailScreen() {
 
   const onSend = async () => {
     const trimmed = body.trim();
-    if (!trimmed || sending) return;
+    if ((!trimmed && attachments.length === 0) || sending) return;
     setSending(true);
     try {
       const message = await postData<TicketMessage>(
         `/tickets/my/${id}/reply`,
-        { body: trimmed },
+        { body: withAttachments(trimmed, attachments) },
       );
       setData((prev) =>
         prev
@@ -128,6 +132,7 @@ export default function TicketDetailScreen() {
           : prev,
       );
       setBody('');
+      setAttachments([]);
       requestAnimationFrame(() =>
         scrollRef.current?.scrollToEnd({ animated: true }),
       );
@@ -221,31 +226,48 @@ export default function TicketDetailScreen() {
             This ticket is closed. Open a new ticket if you need more help.
           </ThemedText>
         </ThemedView>
+      ) : !canCreateTickets ? (
+        <ThemedView type="backgroundElement" style={styles.closedNotice}>
+          <ThemedText type="small" themeColor="textSecondary">
+            {message || 'Subscribe to reply to this ticket.'}
+          </ThemedText>
+          <Pressable
+            onPress={() => router.push('/(tabs)/billing/subscribe')}
+            style={({ pressed }) => [styles.noticeButton, pressed && styles.pressed]}>
+            <ThemedText type="smallBold" style={styles.noticeButtonText}>
+              View plans →
+            </ThemedText>
+          </Pressable>
+        </ThemedView>
       ) : (
         <ThemedView
           style={[styles.composer, { borderTopColor: theme.backgroundSelected }]}>
-          <ThemedTextInput
+          <MessageComposer
             placeholder="Write a reply…"
             value={body}
             onChangeText={setBody}
-            multiline
-            style={styles.composerInput}
+            attachments={attachments}
+            onAttachmentsChange={setAttachments}
+            inputStyle={styles.composerInput}
+            trailing={
+              <Pressable
+                onPress={onSend}
+                disabled={sending || (!body.trim() && attachments.length === 0)}
+                style={[
+                  styles.sendButton,
+                  (sending || (!body.trim() && attachments.length === 0)) &&
+                    styles.sendButtonDisabled,
+                ]}>
+                {sending ? (
+                  <ActivityIndicator color="#ffffff" />
+                ) : (
+                  <ThemedText type="smallBold" style={styles.sendText}>
+                    Send
+                  </ThemedText>
+                )}
+              </Pressable>
+            }
           />
-          <Pressable
-            onPress={onSend}
-            disabled={sending || !body.trim()}
-            style={[
-              styles.sendButton,
-              (sending || !body.trim()) && styles.sendButtonDisabled,
-            ]}>
-            {sending ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <ThemedText type="smallBold" style={styles.sendText}>
-                Send
-              </ThemedText>
-            )}
-          </Pressable>
         </ThemedView>
       )}
     </KeyboardAvoidingView>
@@ -288,11 +310,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   bubble: {
-    maxWidth: '85%',
+    maxWidth: '90%',
     padding: Spacing.three,
     borderTopLeftRadius: Spacing.three,
     borderTopRightRadius: Spacing.three,
     gap: Spacing.half,
+  },
+  // Applied to longer messages: a width floor so the markdown text fills the line
+  // instead of collapsing toward the longest word into a tall, skinny column.
+  bubbleWide: {
+    minWidth: '62%',
   },
   bubbleAuthor: {
     fontWeight: '700',
@@ -301,14 +328,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 16,
     marginTop: Spacing.half,
+    // Timestamp tucked bottom-right of the bubble, matching common chat UIs.
+    alignSelf: 'flex-end',
   },
   bubbleTextOnPrimary: {
     color: '#ffffff',
   },
   composer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: Spacing.two,
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.two,
     paddingBottom: Platform.select({ ios: Spacing.four, default: Spacing.two }),
@@ -326,7 +352,7 @@ const styles = StyleSheet.create({
     height: 48,
     paddingHorizontal: Spacing.four,
     borderRadius: 12,
-    backgroundColor: '#208AEF',
+    backgroundColor: BrandPrimary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -340,5 +366,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.three,
     paddingBottom: Platform.select({ ios: Spacing.five, default: Spacing.three }),
+  },
+  noticeButton: {
+    alignSelf: 'flex-start',
+    height: 40,
+    borderRadius: 10,
+    paddingHorizontal: Spacing.three,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.two,
+    backgroundColor: BrandPrimary,
+  },
+  noticeButtonText: {
+    color: '#ffffff',
+  },
+  pressed: {
+    opacity: 0.7,
   },
 });

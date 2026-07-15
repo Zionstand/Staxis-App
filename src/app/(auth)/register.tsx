@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, router } from 'expo-router';
+import { Link } from 'expo-router';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
@@ -12,12 +12,15 @@ import {
   Switch,
 } from 'react-native';
 
+import { GoogleAuthButton, OrDivider } from '@/components/google-auth-button';
+import { Logo } from '@/components/logo';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedTextInput } from '@/components/ui/themed-text-input';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { BrandPrimary, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { postData } from '@/lib/api';
+import { routeAfterAuth } from '@/lib/post-auth';
 import { tokenStorage } from '@/lib/token-storage';
 import { RegisterSchema, RegisterSchemaType } from '@/lib/zod-schema';
 import { useAuth } from '@/store/use-auth';
@@ -58,7 +61,7 @@ export default function RegisterScreen() {
       const data = await postData<RegisterResponse>('/auth/register', values);
       await tokenStorage.setTokens(data.access_token, data.refresh_token);
       setUser(data.user);
-      router.replace('/(tabs)');
+      routeAfterAuth(data.user);
     } catch (err: any) {
       const message =
         err?.response?.data?.message ?? 'Registration failed. Please try again.';
@@ -76,11 +79,13 @@ export default function RegisterScreen() {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled">
+          <Logo style={styles.logo} width={148} />
+
           <ThemedText type="subtitle" style={styles.title}>
             Create an account
           </ThemedText>
           <ThemedText type="default" themeColor="textSecondary">
-            Get started with Care+
+            Get started with Staxis
           </ThemedText>
 
           <ThemedView style={styles.row}>
@@ -231,7 +236,7 @@ export default function RegisterScreen() {
                   <Switch
                     value={!!value}
                     onValueChange={onChange}
-                    trackColor={{ true: '#208AEF' }}
+                    trackColor={{ true: BrandPrimary }}
                   />
                 )}
               />
@@ -265,6 +270,9 @@ export default function RegisterScreen() {
             )}
           </Pressable>
 
+          <OrDivider />
+          <GoogleAuthButton />
+
           <ThemedView style={styles.linkRow}>
             <ThemedText type="link" themeColor="textSecondary">
               Already have an account?{' '}
@@ -296,6 +304,9 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
   },
+  logo: {
+    marginBottom: Spacing.three,
+  },
   title: {
     marginBottom: -Spacing.two,
   },
@@ -320,7 +331,7 @@ const styles = StyleSheet.create({
   button: {
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#208AEF',
+    backgroundColor: BrandPrimary,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: Spacing.two,

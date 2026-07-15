@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
   ActivityIndicator,
@@ -14,8 +14,10 @@ import {
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { MessageComposer, withAttachments } from '@/components/message-composer';
 import { ThemedTextInput } from '@/components/ui/themed-text-input';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { BrandPrimary, BrandPrimaryForeground, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useSubscription } from '@/hooks/use-subscription';
 import { useTheme } from '@/hooks/use-theme';
 import { postData } from '@/lib/api';
 import {
@@ -50,12 +52,12 @@ function ChoiceChips<T extends string>({
             style={[
               styles.chip,
               {
-                backgroundColor: active ? theme.text : theme.backgroundElement,
+                backgroundColor: active ? BrandPrimary : theme.backgroundElement,
               },
             ]}>
             <ThemedText
               type="small"
-              style={{ color: active ? theme.background : theme.textSecondary }}>
+              style={{ color: active ? BrandPrimaryForeground : theme.textSecondary }}>
               {getLabel(opt)}
             </ThemedText>
           </Pressable>
@@ -66,28 +68,46 @@ function ChoiceChips<T extends string>({
 }
 
 export default function NewTicketScreen() {
+  const { canCreateTickets, message } = useSubscription();
+  // Billing/account tickets are always allowed (even on a lapsed subscription) so
+  // a customer can reach support about the payment problem locking them out — this
+  // mirrors the backend guard's BILLING exemption.
+  const { billing, subject } = useLocalSearchParams<{ billing?: string; subject?: string }>();
+  const billingIntent = billing === '1';
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [attachments, setAttachments] = useState<string[]>([]);
 
   const {
     control,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<CreateTicketSchemaType>({
     resolver: zodResolver(CreateTicketSchema),
     defaultValues: {
-      subject: '',
+      subject: subject ?? '',
       description: '',
-      category: 'GENERAL',
+      category: billingIntent ? 'BILLING' : 'GENERAL',
       priority: 'LOW',
     },
   });
+
+  // Keep the category locked to BILLING whenever the billing intent is active —
+  // including when it's flipped on after mount (via setParams from the paywall).
+  useEffect(() => {
+    if (billingIntent) setValue('category', 'BILLING');
+  }, [billingIntent, setValue]);
 
   const onSubmit = async (values: CreateTicketSchemaType) => {
     setSubmitError(null);
     setLoading(true);
     try {
-      const ticket = await postData<TicketListItem>('/tickets', values);
+      const description = withAttachments(values.description, attachments);
+      const ticket = await postData<TicketListItem>('/tickets', {
+        ...values,
+        description,
+      });
       // Replace this screen with the new ticket so "back" returns to the list.
       router.replace(`/(tabs)/tickets/${ticket.id}`);
     } catch (err: any) {
@@ -98,6 +118,38 @@ export default function NewTicketScreen() {
       setLoading(false);
     }
   };
+
+  // Defense in depth: all entry points to this screen are gated, but a deep link
+  // or back-navigation could still land a blocked user here. Show a paywall —
+  // unless this is a billing ticket, which is always permitted.
+  if (!canCreateTickets && !billingIntent) {
+    return (
+      <ThemedView style={styles.gate}>
+        <ThemedText type="subtitle" style={styles.gateTitle}>
+          Subscription required
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.gateText}>
+          {message || 'Subscribe to open a support ticket.'}
+        </ThemedText>
+        <Pressable
+          style={styles.button}
+          onPress={() => router.replace('/(tabs)/billing/subscribe')}>
+          <ThemedText type="smallBold" style={styles.buttonText}>
+            View plans
+          </ThemedText>
+        </Pressable>
+        <Pressable
+          style={styles.gateBillingLink}
+          onPress={() =>
+            router.setParams({ billing: '1' })
+          }>
+          <ThemedText type="link" themeColor="textSecondary">
+            Have a billing or payment issue? Contact us
+          </ThemedText>
+        </Pressable>
+      </ThemedView>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -133,14 +185,14 @@ export default function NewTicketScreen() {
           <Controller
             control={control}
             name="description"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <ThemedTextInput
-                placeholder="Tell us what's going on…"
-                onBlur={onBlur}
-                onChangeText={onChange}
+            render={({ field: { onChange, value } }) => (
+              <MessageComposer
+                placeholder="Tell us what's going on… you can attach a screenshot too"
                 value={value}
-                multiline
-                style={styles.textArea}
+                onChangeText={onChange}
+                attachments={attachments}
+                onAttachmentsChange={setAttachments}
+                inputStyle={styles.textArea}
               />
             )}
           />
@@ -153,18 +205,25 @@ export default function NewTicketScreen() {
 
         <ThemedView style={styles.field}>
           <ThemedText type="smallBold">Category</ThemedText>
-          <Controller
-            control={control}
-            name="category"
-            render={({ field: { onChange, value } }) => (
-              <ChoiceChips
-                options={CATEGORY_OPTIONS}
-                value={value}
-                onChange={onChange}
-                getLabel={categoryLabel}
-              />
-            )}
-          />
+          {billingIntent ? (
+            // Locked to BILLING — this is the always-allowed billing/account channel.
+            <ThemedText type="small" themeColor="textSecondary">
+              Billing &amp; payments — our billing team will get back to you.
+            </ThemedText>
+          ) : (
+            <Controller
+              control={control}
+              name="category"
+              render={({ field: { onChange, value } }) => (
+                <ChoiceChips
+                  options={CATEGORY_OPTIONS}
+                  value={value}
+                  onChange={onChange}
+                  getLabel={categoryLabel}
+                />
+              )}
+            />
+          )}
         </ThemedView>
 
         <ThemedView style={styles.field}>
@@ -210,6 +269,23 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
+  gate: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.four,
+    gap: Spacing.two,
+  },
+  gateTitle: {
+    textAlign: 'center',
+  },
+  gateText: {
+    textAlign: 'center',
+    maxWidth: 300,
+  },
+  gateBillingLink: {
+    marginTop: Spacing.two,
+  },
   scrollContent: {
     width: '100%',
     maxWidth: MaxContentWidth,
@@ -244,7 +320,7 @@ const styles = StyleSheet.create({
   button: {
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#208AEF',
+    backgroundColor: BrandPrimary,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: Spacing.two,

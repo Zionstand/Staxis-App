@@ -8,6 +8,7 @@ export default function AuthLayout() {
       <Stack.Screen name="forgot-password" />
       <Stack.Screen name="verify-code" />
       <Stack.Screen name="new-password" />
+      <Stack.Screen name="google-callback" />
     </Stack>
   );
 }

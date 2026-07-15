@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 
+import { BrandTitle } from '@/components/logo';
 import { useTheme } from '@/hooks/use-theme';
 
 export default function BillingLayout() {
@@ -12,10 +13,12 @@ export default function BillingLayout() {
         headerTintColor: theme.text,
         headerShadowVisible: false,
         contentStyle: { backgroundColor: theme.background },
+        headerTitle: ({ children }) => <BrandTitle title={children} />,
       }}>
       {/* The overview keeps its own in-screen header. */}
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="transactions" options={{ title: 'Transactions' }} />
+      <Stack.Screen name="subscribe" options={{ title: 'Subscribe' }} />
     </Stack>
   );
 }

@@ -1,8 +1,10 @@
+import Constants from 'expo-constants';
 import { Image } from 'expo-image';
 import { Stack, router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Linking,
   Pressable,
   RefreshControl,
@@ -13,13 +15,16 @@ import {
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BrandPrimary, BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { pickAndUploadAvatar, type AvatarSource } from '@/lib/avatar';
 import { fetchData, postData } from '@/lib/api';
+import { removePushToken, sendTestPush } from '@/lib/notifications';
 import { tokenStorage } from '@/lib/token-storage';
 import { ProfileData } from '@/lib/types';
 import { fmtDate } from '@/lib/utils';
 import { useAuth } from '@/store/use-auth';
+import { useNotifications } from '@/store/use-notifications';
 
 const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: 'Super Admin',
@@ -59,6 +64,7 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
 export default function ProfileScreen() {
   const theme = useTheme();
   const storeUser = useAuth((s) => s.user);
+  const setUser = useAuth((s) => s.setUser);
   const clearUser = useAuth((s) => s.clearUser);
 
   const [data, setData] = useState<ProfileData | null>(null);
@@ -66,6 +72,8 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [testingPush, setTestingPush] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -95,14 +103,75 @@ export default function ProfileScreen() {
   const handleSignOut = async () => {
     setSigningOut(true);
     const refreshToken = await tokenStorage.getRefreshToken();
+    // Unregister this device's push token while the session is still valid.
+    const pushToken = useNotifications.getState().pushToken;
+    if (pushToken) {
+      try {
+        await removePushToken(pushToken);
+      } catch {
+        // best-effort
+      }
+    }
     try {
       await postData('/auth/logout', { refreshToken });
     } catch {
       // Clear the local session regardless of the server response.
     }
+    useNotifications.getState().reset();
     await tokenStorage.clear();
     clearUser();
     router.replace('/(auth)/login');
+  };
+
+  // Dev-only: verify the full push path (token → Expo → device) on demand.
+  const handleTestPush = async () => {
+    setTestingPush(true);
+    try {
+      const { ok, tokenCount } = await sendTestPush();
+      if (!ok || tokenCount === 0) {
+        Alert.alert(
+          'No device registered',
+          'This account has no push token on file. Make sure you granted notification permission and are running a real dev/production build (not Expo Go or a simulator).',
+        );
+      } else {
+        Alert.alert(
+          'Test push sent',
+          `Sent to ${tokenCount} device${tokenCount === 1 ? '' : 's'}. Background the app to see the banner. If it never arrives, the FCM/APNs credentials on the EAS project likely need setup.`,
+        );
+      }
+    } catch {
+      Alert.alert('Could not send', 'The test request failed. Check your connection and try again.');
+    } finally {
+      setTestingPush(false);
+    }
+  };
+
+  const userId = data?.id ?? storeUser?.id ?? null;
+
+  // Upload a new profile picture from the camera or photo library.
+  const runAvatarUpload = async (source: AvatarSource) => {
+    if (!userId) return;
+    setUploadingAvatar(true);
+    try {
+      const url = await pickAndUploadAvatar(userId, source);
+      if (url) {
+        setData((prev) => (prev ? { ...prev, image: url } : prev));
+        if (storeUser) setUser({ ...storeUser, image: url });
+      }
+    } catch {
+      Alert.alert('Upload failed', "Couldn't update your photo. Please try again.");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const onChangeAvatar = () => {
+    if (!userId || uploadingAvatar) return;
+    Alert.alert('Profile picture', 'Update your profile picture', [
+      { text: 'Take photo', onPress: () => runAvatarUpload('camera') },
+      { text: 'Choose from library', onPress: () => runAvatarUpload('library') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   };
 
   // Fall back to the cached auth-store user while /user/me loads.
@@ -142,15 +211,30 @@ export default function ProfileScreen() {
       />
       <View style={styles.inner}>
         <View style={styles.identity}>
-          {image ? (
-            <Image source={{ uri: image }} style={styles.avatar} contentFit="cover" />
-          ) : (
-            <View style={[styles.avatar, styles.avatarFallback]}>
-              <ThemedText type="subtitle" style={styles.avatarInitials}>
-                {initials(firstName, lastName)}
-              </ThemedText>
+          <Pressable
+            onPress={onChangeAvatar}
+            disabled={!userId || uploadingAvatar}
+            style={styles.avatarWrap}
+            accessibilityRole="button"
+            accessibilityLabel="Change profile picture">
+            {image ? (
+              <Image source={{ uri: image }} style={styles.avatar} contentFit="cover" />
+            ) : (
+              <View style={[styles.avatar, styles.avatarFallback]}>
+                <ThemedText type="subtitle" style={styles.avatarInitials}>
+                  {initials(firstName, lastName)}
+                </ThemedText>
+              </View>
+            )}
+            {uploadingAvatar && (
+              <View style={[styles.avatar, styles.avatarOverlay]}>
+                <ActivityIndicator color="#ffffff" />
+              </View>
+            )}
+            <View style={[styles.cameraBadge, { borderColor: theme.background }]}>
+              <ThemedText style={styles.cameraGlyph}>📷</ThemedText>
             </View>
-          )}
+          </Pressable>
           <ThemedText type="subtitle" style={styles.name}>
             {firstName} {lastName}
           </ThemedText>
@@ -242,6 +326,24 @@ export default function ProfileScreen() {
             Account
           </ThemedText>
           <ThemedView type="backgroundElement" style={styles.card}>
+            {__DEV__ && (
+              <>
+                <Pressable
+                  onPress={handleTestPush}
+                  disabled={testingPush}
+                  style={({ pressed }) => [styles.actionRow, pressed && styles.pressed]}>
+                  <ThemedText type="small">Send test notification</ThemedText>
+                  {testingPush ? (
+                    <ActivityIndicator size="small" color={theme.textSecondary} />
+                  ) : (
+                    <ThemedText type="small" themeColor="textSecondary">
+                      ›
+                    </ThemedText>
+                  )}
+                </Pressable>
+                <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} />
+              </>
+            )}
             <Pressable
               onPress={() => router.push('/(tabs)/profile/change-password')}
               style={({ pressed }) => [styles.actionRow, pressed && styles.pressed]}>
@@ -262,10 +364,25 @@ export default function ProfileScreen() {
             </Pressable>
           </ThemedView>
         </View>
+
+        {/* About */}
+        <View style={styles.footer}>
+          <Image
+            source={require('@/assets/images/staxis-mark.png')}
+            style={styles.footerMark}
+            contentFit="contain"
+            accessibilityLabel="Staxis"
+          />
+          <ThemedText type="small" themeColor="textSecondary">
+            Staxis · v{appVersion}
+          </ThemedText>
+        </View>
       </View>
     </ScrollView>
   );
 }
+
+const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
 const styles = StyleSheet.create({
   scrollView: {
@@ -294,16 +411,44 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.one,
   },
+  avatarWrap: {
+    width: 88,
+    height: 88,
+    marginBottom: Spacing.one,
+  },
   avatar: {
     width: 88,
     height: 88,
     borderRadius: 44,
-    marginBottom: Spacing.one,
   },
   avatarFallback: {
-    backgroundColor: '#208AEF',
+    backgroundColor: BrandPrimary,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cameraBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: BrandPrimary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+  },
+  cameraGlyph: {
+    fontSize: 14,
+    lineHeight: 18,
   },
   avatarInitials: {
     color: '#ffffff',
@@ -365,5 +510,15 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.6,
+  },
+  footer: {
+    alignItems: 'center',
+    gap: Spacing.two,
+    marginTop: Spacing.two,
+    opacity: 0.6,
+  },
+  footerMark: {
+    width: 28,
+    height: 28,
   },
 });
