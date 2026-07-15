@@ -1,6 +1,6 @@
-import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
+import { Platform, StyleSheet, Text, type TextProps, type TextStyle } from 'react-native';
 
-import { Fonts, ThemeColor } from '@/constants/theme';
+import { Fonts, outfitFontFamily, ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ThemedTextProps = TextProps & {
@@ -11,23 +11,24 @@ export type ThemedTextProps = TextProps & {
 export function ThemedText({ style, type = 'default', themeColor, ...rest }: ThemedTextProps) {
   const theme = useTheme();
 
-  return (
-    <Text
-      style={[
-        { color: theme[themeColor ?? 'text'] },
-        type === 'default' && styles.default,
-        type === 'title' && styles.title,
-        type === 'small' && styles.small,
-        type === 'smallBold' && styles.smallBold,
-        type === 'subtitle' && styles.subtitle,
-        type === 'link' && styles.link,
-        type === 'linkPrimary' && styles.linkPrimary,
-        type === 'code' && styles.code,
-        style,
-      ]}
-      {...rest}
-    />
-  );
+  const composed = StyleSheet.flatten([
+    { color: theme[themeColor ?? 'text'] },
+    type === 'default' && styles.default,
+    type === 'title' && styles.title,
+    type === 'small' && styles.small,
+    type === 'smallBold' && styles.smallBold,
+    type === 'subtitle' && styles.subtitle,
+    type === 'link' && styles.link,
+    type === 'linkPrimary' && [styles.linkPrimary, { color: theme.primary }],
+    type === 'code' && styles.code,
+    style,
+  ]) as TextStyle;
+
+  // Keep an explicit family (e.g. the monospace `code` type); otherwise map the
+  // resolved weight — including any override from `style` — to the Outfit family.
+  const fontFamily = composed.fontFamily ?? outfitFontFamily(composed.fontWeight);
+
+  return <Text style={[composed, { fontFamily }]} {...rest} />;
 }
 
 const styles = StyleSheet.create({
@@ -63,7 +64,6 @@ const styles = StyleSheet.create({
   linkPrimary: {
     lineHeight: 30,
     fontSize: 14,
-    color: '#3c87f7',
   },
   code: {
     fontFamily: Fonts.mono,

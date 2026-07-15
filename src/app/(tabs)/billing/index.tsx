@@ -15,11 +15,12 @@ import { ThemedView } from '@/components/themed-view';
 import { Badge } from '@/components/ui/badge';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { TxnRow } from '@/components/ui/txn-row';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, BrandPrimary, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { fetchData } from '@/lib/api';
 import { ApiPlan, DashboardData } from '@/lib/types';
 import { daysUntil, fmtDate, fmtNaira } from '@/lib/utils';
+import { useSubscriptionStore } from '@/store/use-subscription-store';
 
 const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
   ACTIVE: { bg: '#dcfce7', color: '#15803d' },
@@ -68,6 +69,7 @@ export default function BillingScreen() {
     try {
       const result = await fetchData<DashboardData>('/user/dashboard');
       setData(result);
+      useSubscriptionStore.getState().setFromCompany(result.company);
       setError(false);
     } catch {
       setError(true);
@@ -121,6 +123,14 @@ export default function BillingScreen() {
   const isPastDue = status === 'PAST_DUE';
   const isRecurring = company?.subscriptionType === 'subscription';
 
+  const ctaLabel = isPastDue
+    ? 'Settle payment'
+    : isTrial
+      ? 'Subscribe now'
+      : paymentVerified
+        ? 'Renew or change plan'
+        : 'Complete payment';
+
   const subtotal = plans.reduce((sum, p) => sum + (p.price ?? 0), 0);
   const bundleDiscount = company?.bundleDiscount ?? 0;
   const total = company?.amount ?? 0;
@@ -164,6 +174,15 @@ export default function BillingScreen() {
           </ThemedView>
         ) : (
           <>
+            {/* Primary action — subscribe / renew / settle */}
+            <Pressable
+              onPress={() => router.push('/(tabs)/billing/subscribe')}
+              style={({ pressed }) => [styles.cta, pressed && styles.pressed]}>
+              <ThemedText type="smallBold" style={styles.ctaText}>
+                {ctaLabel}
+              </ThemedText>
+            </Pressable>
+
             {/* Subscription status */}
             <ThemedView type="backgroundElement" style={styles.card}>
               <View style={styles.row}>
@@ -300,8 +319,7 @@ export default function BillingScreen() {
             </View>
 
             <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
-              To change your plan or update payment details, visit the Care+ web
-              dashboard or reach out via Support.
+              Secured by Paystack. Need a hand? Reach us any time via Support.
             </ThemedText>
           </>
         )}
@@ -386,5 +404,15 @@ const styles = StyleSheet.create({
   footnote: {
     marginTop: Spacing.one,
     textAlign: 'center',
+  },
+  cta: {
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: BrandPrimary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaText: {
+    color: '#ffffff',
   },
 });

@@ -7,7 +7,22 @@ export interface ApiPlan {
   forLabel: string;
   responseTime: string;
   highlight?: boolean;
+  isCustom?: boolean;
+  /** Paystack recurring-plan id, used for single monthly subscriptions. */
+  paystackMonthlyId?: string;
 }
+
+/** A pricing track (e.g. Web / IT / Data), each holding selectable plans. */
+export interface ApiTrack {
+  id: string;
+  label: string;
+  color: string;
+  title: string;
+  subtitle: string;
+  plans: ApiPlan[];
+}
+
+export type BillingCycle = 'monthly' | 'quarterly' | 'annually';
 
 export interface Manager {
   id: string;
@@ -32,6 +47,7 @@ export interface Company {
   status: string;
   nextBilling: string | null;
   trialEndsAt: string | null;
+  gracePeriodEndsAt: string | null;
   paymentVerified: boolean;
   subscriptionType: string;
 }

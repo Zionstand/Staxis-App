@@ -11,10 +11,11 @@ import {
   StyleSheet,
 } from 'react-native';
 
+import { Logo } from '@/components/logo';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedTextInput } from '@/components/ui/themed-text-input';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { BrandPrimary, MaxContentWidth, Spacing } from '@/constants/theme';
 import { postData } from '@/lib/api';
 import { maskEmail } from '@/lib/utils';
 import { NewPasswordSchema, NewPasswordSchemaType } from '@/lib/zod-schema';
@@ -54,6 +55,7 @@ export default function NewPasswordScreen() {
     return (
       <ThemedView style={styles.container}>
         <ThemedView style={styles.scrollContent}>
+          <Logo style={styles.logo} width={148} />
           <ThemedText type="subtitle" style={styles.title}>
             Password updated
           </ThemedText>
@@ -81,6 +83,7 @@ export default function NewPasswordScreen() {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled">
+          <Logo style={styles.logo} width={148} />
           <ThemedText type="subtitle" style={styles.title}>
             Set new password
           </ThemedText>
@@ -174,6 +177,9 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
   },
+  logo: {
+    marginBottom: Spacing.four,
+  },
   title: {
     marginBottom: -Spacing.two,
   },
@@ -186,7 +192,7 @@ const styles = StyleSheet.create({
   button: {
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#208AEF',
+    backgroundColor: BrandPrimary,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: Spacing.two,

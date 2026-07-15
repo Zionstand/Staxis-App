@@ -11,10 +11,11 @@ import {
   StyleSheet,
 } from 'react-native';
 
+import { Logo } from '@/components/logo';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedTextInput } from '@/components/ui/themed-text-input';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { BrandPrimary, MaxContentWidth, Spacing } from '@/constants/theme';
 import { postData } from '@/lib/api';
 import {
   ForgotPasswordSchema,
@@ -60,6 +61,7 @@ export default function ForgotPasswordScreen() {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled">
+          <Logo style={styles.logo} width={148} />
           <ThemedText type="subtitle" style={styles.title}>
             Reset password
           </ThemedText>
@@ -141,6 +143,9 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
   },
+  logo: {
+    marginBottom: Spacing.four,
+  },
   title: {
     marginBottom: -Spacing.two,
   },
@@ -153,7 +158,7 @@ const styles = StyleSheet.create({
   button: {
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#208AEF',
+    backgroundColor: BrandPrimary,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: Spacing.two,

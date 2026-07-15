@@ -1,5 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
+import { BrandPrimary } from '@/constants/theme';
+
 type ProgressBarProps = {
   value: number;
   trackColor?: string;
@@ -9,7 +11,7 @@ type ProgressBarProps = {
 export function ProgressBar({
   value,
   trackColor = '#e2e8f0',
-  fillColor = '#208AEF',
+  fillColor = BrandPrimary,
 }: ProgressBarProps) {
   const width = `${Math.max(0, Math.min(100, value))}%` as const;
 

@@ -1,9 +1,11 @@
 import axios, { AxiosError, AxiosInstance } from 'axios';
 import { router } from 'expo-router';
+import { Alert } from 'react-native';
 
 import { env } from '@/lib/env';
 import { tokenStorage } from '@/lib/token-storage';
 import { useAuth } from '@/store/use-auth';
+import { useSubscriptionStore } from '@/store/use-subscription-store';
 
 const api: AxiosInstance = axios.create({
   baseURL: env.BACKEND_URL,
@@ -16,6 +18,8 @@ const PUBLIC_ROUTES = [
   '/auth/forgot-password',
   '/auth/verify-code',
   '/auth/set-new-password',
+  '/auth/google/exchange', // pre-auth: no bearer, and a 401 here isn't a session expiry
+  '/auth/google/id-token', // native Google sign-in — same pre-auth treatment
   '/auth/refresh', // never re-intercept the refresh endpoint itself
 ];
 
@@ -57,11 +61,65 @@ function processQueue(error: any) {
 async function logoutAndRedirect() {
   await tokenStorage.clear();
   useAuth.getState().clearUser();
+  useSubscriptionStore.getState().clear();
   router.replace('/(auth)/login');
 }
 
+// The backend's SubscriptionGuard returns 402 for gated writes (create ticket,
+// reply, …) when the company has no active/paid subscription. Handle it once,
+// centrally: keep the client subscription state in sync and prompt to subscribe,
+// instead of surfacing a raw error at each call site.
+let subscriptionPromptOpen = false;
+
+function handlePaymentRequired(data: any) {
+  // Reflect the server's verdict so gated UI updates immediately.
+  if (data?.subscriptionStatus !== undefined) {
+    useSubscriptionStore.getState().setStatus(data.subscriptionStatus);
+  }
+
+  if (subscriptionPromptOpen) return;
+  subscriptionPromptOpen = true;
+
+  const message =
+    (typeof data?.message === 'string' && data.message) ||
+    'Subscribe to continue using this feature.';
+
+  Alert.alert(
+    'Subscription required',
+    message,
+    [
+      {
+        text: 'Not now',
+        style: 'cancel',
+        onPress: () => {
+          subscriptionPromptOpen = false;
+        },
+      },
+      {
+        text: 'View plans',
+        onPress: () => {
+          subscriptionPromptOpen = false;
+          router.push('/(tabs)/billing/subscribe');
+        },
+      },
+    ],
+    { onDismiss: () => (subscriptionPromptOpen = false) },
+  );
+}
+
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // PAST_DUE companies inside their grace window get their writes through, with
+    // the grace end-date on this header. Capture it so the UI can nudge to renew.
+    const warning = response.headers?.['x-subscription-warning'];
+    if (warning === 'grace-period') {
+      const endsAt = response.headers?.['x-grace-period-ends'];
+      useSubscriptionStore.getState().setGraceWarning(
+        typeof endsAt === 'string' ? endsAt : null,
+      );
+    }
+    return response;
+  },
   async (error: AxiosError & { config?: any }) => {
     const originalRequest = error.config;
     const status = error.response?.status;
@@ -103,6 +161,12 @@ api.interceptors.response.use(
 
         return Promise.reject(err);
       }
+    }
+
+    // Handle subscription gating (402) centrally — prompt to subscribe.
+    if (status === 402) {
+      handlePaymentRequired(error.response?.data);
+      return Promise.reject(error);
     }
 
     // Handle auth guard rejections (role/session) — but NOT business logic 403s.
