@@ -115,6 +115,15 @@ export default function HomeScreen() {
     load();
   };
 
+  // Retry from the error state: drop back to the spinner and clear the error so
+  // the tap gives immediate feedback, instead of silently re-failing onto the
+  // identical screen.
+  const onRetry = () => {
+    setError(false);
+    setLoading(true);
+    load();
+  };
+
   if (loading) {
     return (
       <ThemedView style={styles.centered}>
@@ -129,7 +138,10 @@ export default function HomeScreen() {
         <ThemedText type="default" themeColor="textSecondary">
           Couldn&apos;t load your dashboard.
         </ThemedText>
-        <Pressable onPress={load}>
+        <Pressable
+          onPress={onRetry}
+          hitSlop={12}
+          style={({ pressed }) => pressed && styles.pressed}>
           <ThemedText type="linkPrimary">Try again</ThemedText>
         </Pressable>
       </ThemedView>
@@ -256,6 +268,7 @@ export default function HomeScreen() {
           contentContainerStyle={styles.quickRow}>
           <QuickAction icon="add-circle" label="New ticket" onPress={() => router.push('/(tabs)/tickets/new')} />
           <QuickAction icon="chatbubbles" label="My tickets" onPress={() => router.push('/(tabs)/tickets')} />
+          <QuickAction icon="construct" label="Services" onPress={() => router.push('/(tabs)/services')} />
           <QuickAction icon="card" label="Billing" onPress={() => router.push('/(tabs)/billing')} />
           <QuickAction icon="notifications" label="Alerts" onPress={() => router.push('/notifications')} />
         </ScrollView>
