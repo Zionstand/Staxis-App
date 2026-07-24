@@ -12,6 +12,7 @@ export type NotificationType =
   | 'PAYMENT_SUCCESSFUL'
   | 'SUBSCRIPTION_CANCELLED'
   | 'SUBSCRIPTION_PAST_DUE'
+  | 'ORDER_PAID'
   | 'TICKET_CREATED'
   | 'TICKET_STATUS_CHANGED'
   | 'TICKET_MESSAGE_RECEIVED'
@@ -62,6 +63,7 @@ export const NOTIFICATION_CONFIG: Record<NotificationType, NotificationConfigEnt
   PAYMENT_SUCCESSFUL: { icon: '💳', label: 'Billing' },
   SUBSCRIPTION_CANCELLED: { icon: '❌', label: 'Billing' },
   SUBSCRIPTION_PAST_DUE: { icon: '⚠️', label: 'Billing' },
+  ORDER_PAID: { icon: '🧾', label: 'On-Demand' },
   TICKET_CREATED: { icon: '🎫', label: 'Support' },
   TICKET_STATUS_CHANGED: { icon: '🔄', label: 'Support' },
   TICKET_MESSAGE_RECEIVED: { icon: '💬', label: 'Support' },
@@ -75,6 +77,12 @@ export const NOTIFICATION_CONFIG: Record<NotificationType, NotificationConfigEnt
 function getTicketId(metadata: AppNotification['metadata']): string | null {
   if (!metadata || typeof metadata !== 'object') return null;
   const id = (metadata as { ticketId?: unknown }).ticketId;
+  return typeof id === 'string' && id.length > 0 ? id : null;
+}
+
+function getMetaId(metadata: AppNotification['metadata'], key: string): string | null {
+  if (!metadata || typeof metadata !== 'object') return null;
+  const id = (metadata as Record<string, unknown>)[key];
   return typeof id === 'string' && id.length > 0 ? id : null;
 }
 
@@ -98,6 +106,13 @@ export function getNotificationLink(n: AppNotification): string | null {
     case 'SUBSCRIPTION_CANCELLED':
     case 'SUBSCRIPTION_PAST_DUE':
       return '/(tabs)/billing';
+    case 'ORDER_PAID': {
+      const orderId = getMetaId(n.metadata, 'orderId');
+      if (orderId) return `/(tabs)/services/orders/${orderId}`;
+      const requestId = getMetaId(n.metadata, 'requestId');
+      if (requestId) return `/(tabs)/services/requests/${requestId}`;
+      return '/(tabs)/services';
+    }
     default:
       return null;
   }

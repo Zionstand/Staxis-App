@@ -38,11 +38,17 @@ if (Notifications) {
 }
 
 // Build a router link from a push's data payload (mirrors getNotificationLink).
+// Forward whichever id fields the payload carries so on-tap deep-links land on
+// the exact ticket / order / request.
 function linkFromData(data: Record<string, unknown> | undefined): string | null {
   if (!data?.type) return null;
+  const metadata: Record<string, unknown> = {};
+  for (const key of ['ticketId', 'orderId', 'requestId'] as const) {
+    if (typeof data[key] === 'string') metadata[key] = data[key];
+  }
   return getNotificationLink({
     type: data.type as AppNotification['type'],
-    metadata: data.ticketId ? { ticketId: data.ticketId } : null,
+    metadata: Object.keys(metadata).length > 0 ? metadata : null,
     recipientType: 'USER',
   } as AppNotification);
 }

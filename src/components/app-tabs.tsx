@@ -24,6 +24,7 @@ type TabDef = {
 
 const TABS: TabDef[] = [
   { name: 'home', href: '/', label: 'Home', icon: 'home-outline', iconActive: 'home' },
+  { name: 'services', href: '/services', label: 'Services', icon: 'construct-outline', iconActive: 'construct' },
   { name: 'tickets', href: '/tickets', label: 'Support', icon: 'chatbubbles-outline', iconActive: 'chatbubbles' },
   { name: 'billing', href: '/billing', label: 'Billing', icon: 'card-outline', iconActive: 'card' },
   { name: 'profile', href: '/profile', label: 'Profile', icon: 'person-circle-outline', iconActive: 'person-circle', profile: true },
