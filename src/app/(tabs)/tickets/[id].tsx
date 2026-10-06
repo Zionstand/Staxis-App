@@ -4,25 +4,30 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
+  TextInput,
   View,
 } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Badge } from '@/components/ui/badge';
-import { ThemedTextInput } from '@/components/ui/themed-text-input';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import {
+  EmptyState,
+  StaxisButton,
+  StaxisTag,
+  StaxisText,
+} from '@/components/staxis';
+import {
+  Colors,
+  Palette,
+  Radius,
+  Spacing,
+  Type,
+} from '@/constants/staxis-theme';
 import { fetchData, postData } from '@/lib/api';
 import {
   categoryLabel,
   priorityLabel,
-  priorityStyle,
   statusLabel,
-  statusStyle,
 } from '@/lib/tickets';
 import { TicketDetail, TicketMessage } from '@/lib/types';
 import { fmtDateTime } from '@/lib/utils';
@@ -35,8 +40,20 @@ type Bubble = {
   createdAt: string;
 };
 
+function statusTagVariant(status: string) {
+  if (status === 'RESOLVED' || status === 'CLOSED') return 'success' as const;
+  if (status === 'IN_PROGRESS') return 'warn' as const;
+  if (status === 'ON_HOLD') return 'neutral' as const;
+  return 'info' as const;
+}
+
+function priorityTagVariant(priority: string) {
+  if (priority === 'URGENT') return 'danger' as const;
+  if (priority === 'HIGH') return 'warn' as const;
+  return 'neutral' as const;
+}
+
 function MessageBubble({ bubble }: { bubble: Bubble }) {
-  const theme = useTheme();
   const fromUser = bubble.fromUser;
 
   return (
@@ -44,33 +61,36 @@ function MessageBubble({ bubble }: { bubble: Bubble }) {
       style={[
         styles.bubbleRow,
         { justifyContent: fromUser ? 'flex-end' : 'flex-start' },
-      ]}>
+      ]}
+    >
       <View
         style={[
           styles.bubble,
           {
-            backgroundColor: fromUser ? '#208AEF' : theme.backgroundElement,
-            borderBottomRightRadius: fromUser ? Spacing.half : Spacing.three,
-            borderBottomLeftRadius: fromUser ? Spacing.three : Spacing.half,
+            backgroundColor: fromUser ? Palette.signal : Palette.bone2,
+            borderBottomRightRadius: fromUser ? 2 : Radius.md,
+            borderBottomLeftRadius: fromUser ? Radius.md : 2,
           },
-        ]}>
-        <ThemedText
-          type="small"
-          style={[styles.bubbleAuthor, fromUser && styles.bubbleTextOnPrimary]}
-          themeColor={fromUser ? undefined : 'textSecondary'}>
+        ]}
+      >
+        <StaxisText
+          variant="tableCellMono"
+          style={{ color: fromUser ? Palette.bone : Colors.text2 }}
+        >
           {bubble.author}
-        </ThemedText>
-        <ThemedText
-          type="default"
-          style={fromUser ? styles.bubbleTextOnPrimary : undefined}>
+        </StaxisText>
+        <StaxisText
+          variant="bodyBase"
+          style={fromUser ? { color: Palette.bone } : undefined}
+        >
           {bubble.body}
-        </ThemedText>
-        <ThemedText
-          type="small"
-          style={[styles.bubbleTime, fromUser && styles.bubbleTextOnPrimary]}
-          themeColor={fromUser ? undefined : 'textSecondary'}>
+        </StaxisText>
+        <StaxisText
+          variant="listTime"
+          style={fromUser ? { color: 'rgba(245,242,236,0.62)' } : undefined}
+        >
           {fmtDateTime(bubble.createdAt)}
-        </ThemedText>
+        </StaxisText>
       </View>
     </View>
   );
@@ -78,7 +98,6 @@ function MessageBubble({ bubble }: { bubble: Bubble }) {
 
 export default function TicketDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const theme = useTheme();
   const scrollRef = useRef<ScrollView>(null);
 
   const [data, setData] = useState<TicketDetail | null>(null);
@@ -119,7 +138,6 @@ export default function TicketDetailScreen() {
           ? {
               ...prev,
               messages: [...prev.messages, message],
-              // Backend reopens a resolved/closed ticket when the user replies.
               status:
                 prev.status === 'RESOLVED' || prev.status === 'CLOSED'
                   ? 'OPEN'
@@ -140,32 +158,28 @@ export default function TicketDetailScreen() {
 
   if (loading) {
     return (
-      <ThemedView style={styles.centered}>
-        <ActivityIndicator />
-      </ThemedView>
+      <View style={styles.centered}>
+        <ActivityIndicator color={Palette.signal} />
+      </View>
     );
   }
 
   if (error && !data) {
     return (
-      <ThemedView style={styles.centered}>
-        <ThemedText type="default" themeColor="textSecondary">
-          Couldn&apos;t load this ticket.
-        </ThemedText>
-        <Pressable onPress={load}>
-          <ThemedText type="linkPrimary">Try again</ThemedText>
-        </Pressable>
-      </ThemedView>
+      <View style={styles.centered}>
+        <EmptyState
+          title="Couldn't load ticket"
+          message="Check your connection and try again."
+          action={{ label: 'Retry', onPress: load }}
+        />
+      </View>
     );
   }
 
   if (!data) return null;
 
-  const ss = statusStyle(data.status);
-  const ps = priorityStyle(data.priority);
   const closed = data.status === 'CLOSED';
 
-  // The original description renders as the first message from the customer.
   const bubbles: Bubble[] = [
     {
       key: 'description',
@@ -190,23 +204,31 @@ export default function TicketDetailScreen() {
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 96 : 0}>
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 96 : 0}
+    >
       <Stack.Screen options={{ title: `#${data.ticketNumber}` }} />
       <ScrollView
         ref={scrollRef}
-        style={styles.flex}
+        style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
-        onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}>
+        onContentSizeChange={() =>
+          scrollRef.current?.scrollToEnd({ animated: false })
+        }
+      >
         <View style={styles.metaHeader}>
-          <ThemedText type="subtitle" style={styles.subject}>
-            {data.subject}
-          </ThemedText>
-          <View style={styles.badgeRow}>
-            <Badge label={statusLabel(data.status)} bg={ss.bg} color={ss.color} />
-            <Badge label={priorityLabel(data.priority)} bg={ps.bg} color={ps.color} />
-            <ThemedText type="small" themeColor="textSecondary">
+          <StaxisText variant="displaySm">{data.subject}</StaxisText>
+          <View style={styles.tagRow}>
+            <StaxisTag
+              variant={statusTagVariant(data.status)}
+              label={statusLabel(data.status)}
+            />
+            <StaxisTag
+              variant={priorityTagVariant(data.priority)}
+              label={priorityLabel(data.priority)}
+            />
+            <StaxisText variant="listSub">
               {categoryLabel(data.category)}
-            </ThemedText>
+            </StaxisText>
           </View>
         </View>
 
@@ -216,129 +238,99 @@ export default function TicketDetailScreen() {
       </ScrollView>
 
       {closed ? (
-        <ThemedView type="backgroundElement" style={styles.closedNotice}>
-          <ThemedText type="small" themeColor="textSecondary">
+        <View style={styles.closedNotice}>
+          <StaxisText variant="formHint">
             This ticket is closed. Open a new ticket if you need more help.
-          </ThemedText>
-        </ThemedView>
+          </StaxisText>
+        </View>
       ) : (
-        <ThemedView
-          style={[styles.composer, { borderTopColor: theme.backgroundSelected }]}>
-          <ThemedTextInput
-            placeholder="Write a reply…"
+        <View style={styles.composer}>
+          <TextInput
+            placeholder="Write a reply..."
+            placeholderTextColor={Colors.text3}
             value={body}
             onChangeText={setBody}
             multiline
             style={styles.composerInput}
           />
-          <Pressable
+          <StaxisButton
+            variant="primary"
+            label={sending ? '' : 'Send'}
+            size="sm"
             onPress={onSend}
             disabled={sending || !body.trim()}
-            style={[
-              styles.sendButton,
-              (sending || !body.trim()) && styles.sendButtonDisabled,
-            ]}>
-            {sending ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <ThemedText type="smallBold" style={styles.sendText}>
-                Send
-              </ThemedText>
-            )}
-          </Pressable>
-        </ThemedView>
+            icon={
+              sending ? (
+                <ActivityIndicator color={Palette.bone} size="small" />
+              ) : undefined
+            }
+            style={(!body.trim() || sending) ? { opacity: 0.5 } : undefined}
+          />
+        </View>
       )}
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
+  flex: { flex: 1 },
+  scroll: { flex: 1, backgroundColor: Colors.bgApp },
+  scrollContent: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.xl,
+    gap: Spacing.lg,
   },
   centered: {
     flex: 1,
+    backgroundColor: Colors.bgApp,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.two,
   },
-  scrollContent: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    alignSelf: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
-    paddingBottom: Spacing.four,
-    gap: Spacing.three,
-  },
-  metaHeader: {
-    gap: Spacing.two,
-  },
-  subject: {
-    fontSize: 22,
-    lineHeight: 28,
-  },
-  badgeRow: {
+  metaHeader: { gap: Spacing.sm },
+  tagRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
+    gap: Spacing.sm,
     flexWrap: 'wrap',
   },
-  bubbleRow: {
-    flexDirection: 'row',
-  },
+  bubbleRow: { flexDirection: 'row' },
   bubble: {
     maxWidth: '85%',
-    padding: Spacing.three,
-    borderTopLeftRadius: Spacing.three,
-    borderTopRightRadius: Spacing.three,
-    gap: Spacing.half,
-  },
-  bubbleAuthor: {
-    fontWeight: '700',
-  },
-  bubbleTime: {
-    fontSize: 11,
-    lineHeight: 16,
-    marginTop: Spacing.half,
-  },
-  bubbleTextOnPrimary: {
-    color: '#ffffff',
+    padding: Spacing.lg,
+    borderTopLeftRadius: Radius.md,
+    borderTopRightRadius: Radius.md,
+    gap: 2,
   },
   composer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.two,
-    paddingBottom: Platform.select({ ios: Spacing.four, default: Spacing.two }),
-    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.sm,
+    paddingBottom: Platform.select({ ios: Spacing.xl, default: Spacing.sm }),
+    borderTopWidth: 1,
+    borderTopColor: Colors.line,
+    backgroundColor: Colors.bgCard,
   },
   composerInput: {
     flex: 1,
-    height: undefined,
-    minHeight: 48,
+    minHeight: 44,
     maxHeight: 120,
-    paddingTop: Spacing.three,
-    paddingBottom: Spacing.three,
-  },
-  sendButton: {
-    height: 48,
-    paddingHorizontal: Spacing.four,
-    borderRadius: 12,
-    backgroundColor: '#208AEF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sendButtonDisabled: {
-    opacity: 0.5,
-  },
-  sendText: {
-    color: '#ffffff',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.lineStrong,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.bgApp,
+    ...Type.formInput,
   },
   closedNotice: {
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.three,
-    paddingBottom: Platform.select({ ios: Spacing.five, default: Spacing.three }),
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.lg,
+    paddingBottom: Platform.select({ ios: Spacing.xxl, default: Spacing.lg }),
+    backgroundColor: Colors.bgCard,
+    borderTopWidth: 1,
+    borderTopColor: Colors.line,
   },
 });

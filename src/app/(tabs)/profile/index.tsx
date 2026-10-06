@@ -3,7 +3,6 @@ import { Stack, router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Linking,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -11,10 +10,13 @@ import {
   View,
 } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import {
+  EmptyState,
+  SectionLabel,
+  StaxisCard,
+  StaxisText,
+} from '@/components/staxis';
+import { Colors, Palette, Radius, Spacing } from '@/constants/staxis-theme';
 import { fetchData, postData } from '@/lib/api';
 import { tokenStorage } from '@/lib/token-storage';
 import { ProfileData } from '@/lib/types';
@@ -46,18 +48,15 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
   return (
     <View style={styles.infoRow}>
-      <ThemedText type="small" themeColor="textSecondary">
-        {label}
-      </ThemedText>
-      <ThemedText type="small" style={styles.infoValue} numberOfLines={1}>
+      <StaxisText variant="listSub">{label}</StaxisText>
+      <StaxisText variant="listTitle" style={styles.infoValue} numberOfLines={1}>
         {value}
-      </ThemedText>
+      </StaxisText>
     </View>
   );
 }
 
 export default function ProfileScreen() {
-  const theme = useTheme();
   const storeUser = useAuth((s) => s.user);
   const clearUser = useAuth((s) => s.clearUser);
 
@@ -80,7 +79,6 @@ export default function ProfileScreen() {
     }
   }, []);
 
-  // Reload on focus so edits made on the Edit Profile screen show on return.
   useFocusEffect(
     useCallback(() => {
       load();
@@ -98,14 +96,13 @@ export default function ProfileScreen() {
     try {
       await postData('/auth/logout', { refreshToken });
     } catch {
-      // Clear the local session regardless of the server response.
+      /* clear local session regardless */
     }
     await tokenStorage.clear();
     clearUser();
     router.replace('/(auth)/login');
   };
 
-  // Fall back to the cached auth-store user while /user/me loads.
   const firstName = data?.firstName ?? storeUser?.firstName ?? '';
   const lastName = data?.lastName ?? storeUser?.lastName ?? '';
   const email = data?.email ?? storeUser?.email ?? '';
@@ -114,9 +111,9 @@ export default function ProfileScreen() {
 
   if (loading && !data) {
     return (
-      <ThemedView style={styles.centered}>
-        <ActivityIndicator />
-      </ThemedView>
+      <View style={styles.centered}>
+        <ActivityIndicator color={Palette.signal} />
+      </View>
     );
   }
 
@@ -124,246 +121,200 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView
-      style={styles.scrollView}
-      contentContainerStyle={styles.contentContainer}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+      style={styles.scroll}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
       <Stack.Screen
         options={{
           headerRight: () => (
             <Pressable
               onPress={() => router.push('/(tabs)/profile/edit')}
-              hitSlop={8}>
-              <ThemedText type="smallBold" themeColor="text">
-                Edit
-              </ThemedText>
+              hitSlop={8}
+            >
+              <StaxisText variant="cardAction">Edit</StaxisText>
             </Pressable>
           ),
         }}
       />
-      <View style={styles.inner}>
-        <View style={styles.identity}>
-          {image ? (
-            <Image source={{ uri: image }} style={styles.avatar} contentFit="cover" />
-          ) : (
-            <View style={[styles.avatar, styles.avatarFallback]}>
-              <ThemedText type="subtitle" style={styles.avatarInitials}>
-                {initials(firstName, lastName)}
-              </ThemedText>
-            </View>
-          )}
-          <ThemedText type="subtitle" style={styles.name}>
-            {firstName} {lastName}
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {email}
-          </ThemedText>
-          <View style={[styles.roleChip, { backgroundColor: theme.backgroundElement }]}>
-            <ThemedText type="small" themeColor="textSecondary">
-              {roleLabel(role, data?.adminPosition ?? null)}
-            </ThemedText>
+
+      {/* Identity */}
+      <View style={styles.identity}>
+        {image ? (
+          <Image source={{ uri: image }} style={styles.avatar} contentFit="cover" />
+        ) : (
+          <View style={[styles.avatar, styles.avatarFallback]}>
+            <StaxisText
+              variant="displaySm"
+              style={{ color: Palette.bone }}
+            >
+              {initials(firstName, lastName)}
+            </StaxisText>
           </View>
-        </View>
-
-        {error && !data && (
-          <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
-            Couldn&apos;t load the latest details. Pull to refresh.
-          </ThemedText>
         )}
+        <StaxisText variant="displaySm">{firstName} {lastName}</StaxisText>
+        <StaxisText variant="bodySm">{email}</StaxisText>
+        <View style={styles.roleChip}>
+          <StaxisText variant="tag" style={{ color: Colors.text2 }}>
+            {roleLabel(role, data?.adminPosition ?? null)}
+          </StaxisText>
+        </View>
+      </View>
 
-        {/* Personal */}
+      {error && !data && (
+        <StaxisText variant="formHint" style={{ textAlign: 'center' }}>
+          Couldn&apos;t load the latest details. Pull to refresh.
+        </StaxisText>
+      )}
+
+      {/* Personal */}
+      <View style={styles.section}>
+        <SectionLabel>Personal</SectionLabel>
+        <StaxisCard>
+          <InfoRow label="Phone" value={data?.phoneNumber} />
+          <InfoRow label="Username" value={data?.username} />
+          <InfoRow
+            label="Location"
+            value={joinLocation(data?.city, data?.state, data?.country)}
+          />
+          <InfoRow
+            label="Member since"
+            value={data?.createdAt ? fmtDate(data.createdAt) : null}
+          />
+          {!data?.phoneNumber &&
+            !data?.username &&
+            !data?.city &&
+            !data?.createdAt && (
+              <StaxisText variant="bodySm">
+                No additional details on file.
+              </StaxisText>
+            )}
+        </StaxisCard>
+      </View>
+
+      {/* Company */}
+      {company && (
         <View style={styles.section}>
-          <ThemedText type="smallBold" style={styles.sectionLabel}>
-            Personal
-          </ThemedText>
-          <ThemedView type="backgroundElement" style={styles.card}>
-            <InfoRow label="Phone" value={data?.phoneNumber} />
-            <InfoRow label="Username" value={data?.username} />
+          <View style={styles.sectionHeader}>
+            <SectionLabel>Company</SectionLabel>
+            <Pressable
+              onPress={() => router.push('/(tabs)/profile/edit-company')}
+              hitSlop={8}
+            >
+              <StaxisText variant="cardAction">Edit</StaxisText>
+            </Pressable>
+          </View>
+          <StaxisCard>
+            <InfoRow label="Name" value={company.name} />
+            <InfoRow label="Industry" value={company.industry} />
+            <InfoRow label="Size" value={company.companySize} />
+            <InfoRow label="Phone" value={company.companyPhone} />
             <InfoRow
               label="Location"
-              value={joinLocation(data?.city, data?.state, data?.country)}
+              value={joinLocation(company.city, company.state, company.country)}
             />
-            <InfoRow
-              label="Member since"
-              value={data?.createdAt ? fmtDate(data.createdAt) : null}
-            />
-            {!data?.phoneNumber &&
-              !data?.username &&
-              !data?.city &&
-              !data?.createdAt && (
-                <ThemedText type="small" themeColor="textSecondary">
-                  No additional details on file.
-                </ThemedText>
-              )}
-          </ThemedView>
+            <InfoRow label="RC Number" value={company.rcNumber} />
+          </StaxisCard>
         </View>
+      )}
 
-        {/* Company */}
-        {company && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <ThemedText type="smallBold" style={styles.sectionLabel}>
-                Company
-              </ThemedText>
-              <Pressable
-                onPress={() => router.push('/(tabs)/profile/edit-company')}
-                hitSlop={8}>
-                <ThemedText type="linkPrimary">Edit</ThemedText>
-              </Pressable>
-            </View>
-            <ThemedView type="backgroundElement" style={styles.card}>
-              <InfoRow label="Name" value={company.name} />
-              <InfoRow label="Industry" value={company.industry} />
-              <InfoRow label="Size" value={company.companySize} />
-              <InfoRow label="Phone" value={company.companyPhone} />
-              <InfoRow
-                label="Location"
-                value={joinLocation(company.city, company.state, company.country)}
-              />
-              <InfoRow label="RC Number" value={company.rcNumber} />
-              {!!company.websiteUrl && (
-                <Pressable
-                  onPress={() => Linking.openURL(company.websiteUrl!)}
-                  style={styles.infoRow}>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    Website
-                  </ThemedText>
-                  <ThemedText type="link" themeColor="textSecondary" numberOfLines={1}>
-                    {company.websiteUrl}
-                  </ThemedText>
-                </Pressable>
-              )}
-            </ThemedView>
-          </View>
-        )}
-
-        {/* Account */}
-        <View style={styles.section}>
-          <ThemedText type="smallBold" style={styles.sectionLabel}>
-            Account
-          </ThemedText>
-          <ThemedView type="backgroundElement" style={styles.card}>
-            <Pressable
-              onPress={() => router.push('/(tabs)/profile/change-password')}
-              style={({ pressed }) => [styles.actionRow, pressed && styles.pressed]}>
-              <ThemedText type="small">Change password</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                ›
-              </ThemedText>
-            </Pressable>
-            <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} />
-            <Pressable
-              onPress={handleSignOut}
-              disabled={signingOut}
-              style={({ pressed }) => [styles.actionRow, pressed && styles.pressed]}>
-              <ThemedText type="small" style={styles.signOut}>
-                Sign out
-              </ThemedText>
-              {signingOut && <ActivityIndicator size="small" color="#e5484d" />}
-            </Pressable>
-          </ThemedView>
-        </View>
+      {/* Account */}
+      <View style={styles.section}>
+        <SectionLabel>Account</SectionLabel>
+        <StaxisCard>
+          <Pressable
+            onPress={() => router.push('/(tabs)/profile/change-password')}
+            style={({ pressed }) => [
+              styles.actionRow,
+              pressed && styles.pressed,
+            ]}
+          >
+            <StaxisText variant="bodyBase">Change password</StaxisText>
+            <StaxisText variant="bodyBase" style={{ color: Colors.text3 }}>
+              ›
+            </StaxisText>
+          </Pressable>
+          <View style={styles.divider} />
+          <Pressable
+            onPress={handleSignOut}
+            disabled={signingOut}
+            style={({ pressed }) => [
+              styles.actionRow,
+              pressed && styles.pressed,
+            ]}
+          >
+            <StaxisText variant="bodyBase" style={{ color: Palette.signal }}>
+              Sign out
+            </StaxisText>
+            {signingOut && (
+              <ActivityIndicator size="small" color={Palette.signal} />
+            )}
+          </Pressable>
+        </StaxisCard>
       </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollView: {
-    flex: 1,
-  },
-  contentContainer: {
-    flexGrow: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
+  scroll: { flex: 1, backgroundColor: Colors.bgApp },
+  content: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.xxxl,
+    gap: Spacing.xl,
   },
   centered: {
     flex: 1,
+    backgroundColor: Colors.bgApp,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  inner: {
-    flex: 1,
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    gap: Spacing.four,
-  },
-  identity: {
-    alignItems: 'center',
-    gap: Spacing.one,
-  },
+  identity: { alignItems: 'center', gap: Spacing.xs },
   avatar: {
     width: 88,
     height: 88,
     borderRadius: 44,
-    marginBottom: Spacing.one,
+    marginBottom: Spacing.xs,
   },
   avatarFallback: {
-    backgroundColor: '#208AEF',
+    backgroundColor: Palette.signal,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarInitials: {
-    color: '#ffffff',
-    fontSize: 32,
-    lineHeight: 40,
-  },
-  name: {
-    fontSize: 24,
-    lineHeight: 30,
-  },
   roleChip: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
-    borderRadius: Spacing.five,
-    marginTop: Spacing.one,
+    backgroundColor: Palette.bone2,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: Radius.pill,
+    marginTop: Spacing.xs,
   },
-  centerText: {
-    textAlign: 'center',
-  },
-  section: {
-    gap: Spacing.two,
-  },
-  sectionLabel: {
-    marginLeft: Spacing.one,
-  },
+  section: { gap: Spacing.sm },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  card: {
-    borderRadius: Spacing.three,
-    padding: Spacing.three,
-    gap: Spacing.two,
-  },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: Spacing.three,
+    gap: Spacing.lg,
+    paddingVertical: Spacing.xs,
   },
-  infoValue: {
-    flexShrink: 1,
-    textAlign: 'right',
-  },
+  infoValue: { flexShrink: 1, textAlign: 'right' },
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: Spacing.one,
+    paddingVertical: Spacing.xs,
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    marginVertical: Spacing.one,
+    backgroundColor: Colors.line,
+    marginVertical: Spacing.xs,
   },
-  signOut: {
-    color: '#e5484d',
-    fontWeight: '700',
-  },
-  pressed: {
-    opacity: 0.6,
-  },
+  pressed: { opacity: 0.6 },
 });

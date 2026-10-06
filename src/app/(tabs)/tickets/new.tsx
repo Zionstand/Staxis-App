@@ -12,11 +12,8 @@ import {
   View,
 } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { ThemedTextInput } from '@/components/ui/themed-text-input';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { StaxisButton, StaxisInput, StaxisText } from '@/components/staxis';
+import { Colors, Palette, Radius, Spacing } from '@/constants/staxis-theme';
 import { postData } from '@/lib/api';
 import {
   CATEGORY_OPTIONS,
@@ -38,7 +35,6 @@ function ChoiceChips<T extends string>({
   onChange: (v: T) => void;
   getLabel: (v: T) => string;
 }) {
-  const theme = useTheme();
   return (
     <View style={styles.chips}>
       {options.map((opt) => {
@@ -49,15 +45,15 @@ function ChoiceChips<T extends string>({
             onPress={() => onChange(opt)}
             style={[
               styles.chip,
-              {
-                backgroundColor: active ? theme.text : theme.backgroundElement,
-              },
-            ]}>
-            <ThemedText
-              type="small"
-              style={{ color: active ? theme.background : theme.textSecondary }}>
+              { backgroundColor: active ? Palette.ink : Palette.bone2 },
+            ]}
+          >
+            <StaxisText
+              variant="tag"
+              style={{ color: active ? Palette.bone : Colors.text2 }}
+            >
               {getLabel(opt)}
-            </ThemedText>
+            </StaxisText>
           </Pressable>
         );
       })}
@@ -88,7 +84,6 @@ export default function NewTicketScreen() {
     setLoading(true);
     try {
       const ticket = await postData<TicketListItem>('/tickets', values);
-      // Replace this screen with the new ticket so "back" returns to the list.
       router.replace(`/(tabs)/tickets/${ticket.id}`);
     } catch (err: any) {
       const message =
@@ -102,57 +97,52 @@ export default function NewTicketScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <ScrollView
+        style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled">
-        <ThemedView style={styles.field}>
-          <ThemedText type="smallBold">Subject</ThemedText>
-          <Controller
-            control={control}
-            name="subject"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <ThemedTextInput
-                placeholder="Brief summary of your issue"
-                onBlur={onBlur}
-                onChangeText={onChange}
-                value={value}
-                maxLength={150}
-              />
-            )}
-          />
-          {errors.subject && (
-            <ThemedText type="small" style={styles.fieldError}>
-              {errors.subject.message}
-            </ThemedText>
+        keyboardShouldPersistTaps="handled"
+      >
+        <Controller
+          control={control}
+          name="subject"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <StaxisInput
+              label="Subject"
+              required
+              placeholder="Brief summary of your issue"
+              onBlur={onBlur}
+              onChangeText={onChange}
+              value={value}
+              maxLength={150}
+              error={errors.subject?.message}
+            />
           )}
-        </ThemedView>
+        />
 
-        <ThemedView style={styles.field}>
-          <ThemedText type="smallBold">Description</ThemedText>
-          <Controller
-            control={control}
-            name="description"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <ThemedTextInput
-                placeholder="Tell us what's going on…"
-                onBlur={onBlur}
-                onChangeText={onChange}
-                value={value}
-                multiline
-                style={styles.textArea}
-              />
-            )}
-          />
-          {errors.description && (
-            <ThemedText type="small" style={styles.fieldError}>
-              {errors.description.message}
-            </ThemedText>
+        <Controller
+          control={control}
+          name="description"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <StaxisInput
+              label="Description"
+              required
+              placeholder="Tell us what's going on..."
+              onBlur={onBlur}
+              onChangeText={onChange}
+              value={value}
+              multiline
+              style={{ minHeight: 120, textAlignVertical: 'top' }}
+              error={errors.description?.message}
+            />
           )}
-        </ThemedView>
+        />
 
-        <ThemedView style={styles.field}>
-          <ThemedText type="smallBold">Category</ThemedText>
+        <View>
+          <StaxisText variant="formLabel" style={styles.fieldLabel}>
+            Category
+          </StaxisText>
           <Controller
             control={control}
             name="category"
@@ -165,10 +155,12 @@ export default function NewTicketScreen() {
               />
             )}
           />
-        </ThemedView>
+        </View>
 
-        <ThemedView style={styles.field}>
-          <ThemedText type="smallBold">Priority</ThemedText>
+        <View>
+          <StaxisText variant="formLabel" style={styles.fieldLabel}>
+            Priority
+          </StaxisText>
           <Controller
             control={control}
             name="priority"
@@ -181,78 +173,44 @@ export default function NewTicketScreen() {
               />
             )}
           />
-        </ThemedView>
+        </View>
 
         {submitError && (
-          <ThemedText type="small" style={styles.fieldError}>
+          <StaxisText variant="formHint" style={{ color: Palette.signal }}>
             {submitError}
-          </ThemedText>
+          </StaxisText>
         )}
 
-        <Pressable
-          style={[styles.button, loading && styles.buttonDisabled]}
+        <StaxisButton
+          label={loading ? '' : 'Submit ticket'}
           onPress={handleSubmit(onSubmit)}
-          disabled={loading}>
-          {loading ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <ThemedText type="smallBold" style={styles.buttonText}>
-              Submit ticket
-            </ThemedText>
-          )}
-        </Pressable>
+          disabled={loading}
+          block
+          icon={loading ? <ActivityIndicator color={Palette.bone} /> : undefined}
+        />
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
+  flex: { flex: 1 },
+  scroll: { flex: 1, backgroundColor: Colors.bgApp },
   scrollContent: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    alignSelf: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four,
-    paddingBottom: Spacing.six,
-    gap: Spacing.three,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.xl,
+    paddingBottom: Spacing.xxxl,
+    gap: Spacing.sm,
   },
-  field: {
-    gap: Spacing.one,
-  },
-  fieldError: {
-    color: '#e5484d',
-  },
-  textArea: {
-    height: undefined,
-    minHeight: 120,
-    paddingTop: Spacing.three,
-    textAlignVertical: 'top',
-  },
+  fieldLabel: { marginBottom: Spacing.sm },
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.two,
+    gap: Spacing.sm,
   },
   chip: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.five,
-  },
-  button: {
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#208AEF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: Spacing.two,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#ffffff',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+    borderRadius: Radius.pill,
   },
 });

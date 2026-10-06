@@ -6,15 +6,18 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
+  View,
 } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { ThemedTextInput } from '@/components/ui/themed-text-input';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import {
+  EmptyState,
+  StaxisButton,
+  StaxisInput,
+  StaxisText,
+} from '@/components/staxis';
+import { Colors, Palette, Spacing } from '@/constants/staxis-theme';
 import { fetchData, updateData } from '@/lib/api';
 import { ProfileData } from '@/lib/types';
 import { EditCompanySchema, EditCompanySchemaType } from '@/lib/zod-schema';
@@ -30,7 +33,7 @@ type Field = {
 const FIELDS: Field[] = [
   { name: 'companyName', label: 'Company name', placeholder: 'Acme Inc.' },
   { name: 'industry', label: 'Industry', placeholder: 'e.g. Fintech' },
-  { name: 'companySize', label: 'Company size', placeholder: 'e.g. 11–50' },
+  { name: 'companySize', label: 'Company size', placeholder: 'e.g. 11-50' },
   {
     name: 'website',
     label: 'Website',
@@ -97,7 +100,7 @@ export default function EditCompanyScreen() {
           country: c.country ?? '',
         });
       } catch {
-        // Keep empty defaults if prefill fails.
+        /* keep empty defaults */
       } finally {
         if (active) setPrefilling(false);
       }
@@ -124,117 +127,84 @@ export default function EditCompanyScreen() {
 
   if (prefilling) {
     return (
-      <ThemedView style={styles.centered}>
-        <ActivityIndicator />
-      </ThemedView>
+      <View style={styles.centered}>
+        <ActivityIndicator color={Palette.signal} />
+      </View>
     );
   }
 
   if (noCompany) {
     return (
-      <ThemedView style={styles.centered}>
-        <ThemedText type="default" themeColor="textSecondary" style={styles.centerText}>
-          You don&apos;t have a company linked to your account yet.
-        </ThemedText>
-      </ThemedView>
+      <View style={styles.centered}>
+        <EmptyState
+          title="No company linked"
+          message="You don't have a company linked to your account yet."
+        />
+      </View>
     );
   }
 
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <ScrollView
+        style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled">
+        keyboardShouldPersistTaps="handled"
+      >
         {FIELDS.map((f) => (
-          <ThemedView key={f.name} style={styles.field}>
-            <ThemedText type="smallBold">{f.label}</ThemedText>
-            <Controller
-              control={control}
-              name={f.name}
-              render={({ field: { onChange, onBlur, value } }) => (
-                <ThemedTextInput
-                  placeholder={f.placeholder}
-                  keyboardType={f.keyboardType ?? 'default'}
-                  autoCapitalize={f.autoCapitalize ?? 'sentences'}
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  value={value}
-                />
-              )}
-            />
-            {errors[f.name] && (
-              <ThemedText type="small" style={styles.fieldError}>
-                {errors[f.name]?.message}
-              </ThemedText>
+          <Controller
+            key={f.name}
+            control={control}
+            name={f.name}
+            render={({ field: { onChange, onBlur, value } }) => (
+              <StaxisInput
+                label={f.label}
+                placeholder={f.placeholder}
+                keyboardType={f.keyboardType ?? 'default'}
+                autoCapitalize={f.autoCapitalize ?? 'sentences'}
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+                error={errors[f.name]?.message}
+              />
             )}
-          </ThemedView>
+          />
         ))}
 
         {submitError && (
-          <ThemedText type="small" style={styles.fieldError}>
+          <StaxisText variant="formHint" style={{ color: Palette.signal }}>
             {submitError}
-          </ThemedText>
+          </StaxisText>
         )}
 
-        <Pressable
-          style={[styles.button, loading && styles.buttonDisabled]}
+        <StaxisButton
+          label={loading ? '' : 'Save changes'}
           onPress={handleSubmit(onSubmit)}
-          disabled={loading}>
-          {loading ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <ThemedText type="smallBold" style={styles.buttonText}>
-              Save changes
-            </ThemedText>
-          )}
-        </Pressable>
+          disabled={loading}
+          block
+          icon={loading ? <ActivityIndicator color={Palette.bone} /> : undefined}
+        />
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
+  flex: { flex: 1 },
+  scroll: { flex: 1, backgroundColor: Colors.bgApp },
+  scrollContent: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.xl,
+    paddingBottom: Spacing.xxxl,
+    gap: Spacing.sm,
   },
   centered: {
     flex: 1,
+    backgroundColor: Colors.bgApp,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: Spacing.four,
-  },
-  centerText: {
-    textAlign: 'center',
-  },
-  scrollContent: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    alignSelf: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four,
-    paddingBottom: Spacing.six,
-    gap: Spacing.three,
-  },
-  field: {
-    gap: Spacing.one,
-  },
-  fieldError: {
-    color: '#e5484d',
-  },
-  button: {
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#208AEF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: Spacing.two,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#ffffff',
   },
 });
