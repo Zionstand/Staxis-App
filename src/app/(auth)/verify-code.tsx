@@ -9,17 +9,16 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  View,
 } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { ThemedTextInput } from '@/components/ui/themed-text-input';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { StaxisButton, StaxisInput, StaxisText } from '@/components/staxis';
+import { Colors, FontFamily, Palette, Spacing } from '@/constants/staxis-theme';
 import { postData } from '@/lib/api';
 import { maskEmail } from '@/lib/utils';
 import { VerifyCodeSchema, VerifyCodeSchemaType } from '@/lib/zod-schema';
 
-const RESEND_COOLDOWN = 20; // seconds
+const RESEND_COOLDOWN = 20;
 
 export default function VerifyCodeScreen() {
   const { email } = useLocalSearchParams<{ email: string }>();
@@ -80,140 +79,101 @@ export default function VerifyCodeScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
+    <View style={styles.container}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled">
-          <ThemedText type="subtitle" style={styles.title}>
+          keyboardShouldPersistTaps="handled"
+        >
+          <StaxisText variant="displaySm" style={{ color: Colors.text }}>
             Verify code
-          </ThemedText>
-          <ThemedText type="default" themeColor="textSecondary">
-            We&apos;ve sent a 6-digit verification code to{' '}
-            {maskEmail(email ?? '')}
-          </ThemedText>
+          </StaxisText>
+          <StaxisText variant="bodySm" style={styles.subtitle}>
+            We&apos;ve sent a 6-digit code to {maskEmail(email ?? '')}
+          </StaxisText>
 
-          <ThemedView style={styles.field}>
-            <ThemedText type="smallBold">Code</ThemedText>
-            <Controller
-              control={control}
-              name="otp"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <ThemedTextInput
-                  placeholder="000000"
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  style={styles.otpInput}
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  value={value}
-                />
-              )}
-            />
-            {errors.otp && (
-              <ThemedText type="small" style={styles.fieldError}>
-                {errors.otp.message}
-              </ThemedText>
+          <Controller
+            control={control}
+            name="otp"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <StaxisInput
+                label="Code"
+                placeholder="000000"
+                keyboardType="number-pad"
+                maxLength={6}
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+                error={errors.otp?.message}
+                style={styles.otpInput}
+              />
             )}
-          </ThemedView>
+          />
 
           {submitError && (
-            <ThemedText type="small" style={styles.fieldError}>
+            <StaxisText variant="formHint" style={{ color: Palette.signal }}>
               {submitError}
-            </ThemedText>
+            </StaxisText>
           )}
 
-          <Pressable
-            style={[styles.button, loading && styles.buttonDisabled]}
+          <StaxisButton
+            label={loading ? '' : 'Verify code'}
             onPress={handleSubmit(onSubmit)}
-            disabled={loading}>
-            {loading ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <ThemedText type="smallBold" style={styles.buttonText}>
-                Verify code
-              </ThemedText>
-            )}
-          </Pressable>
+            disabled={loading}
+            block
+            icon={loading ? <ActivityIndicator color={Palette.bone} /> : undefined}
+          />
 
-          <ThemedView style={styles.resendRow}>
-            <ThemedText type="small" themeColor="textSecondary">
+          <View style={styles.resendRow}>
+            <StaxisText variant="bodySm">
               Didn&apos;t receive the code?
-            </ThemedText>
+            </StaxisText>
             <Pressable
               onPress={handleResend}
-              disabled={resending || timeLeft > 0}>
+              disabled={resending || timeLeft > 0}
+            >
               {resending ? (
-                <ActivityIndicator />
+                <ActivityIndicator size="small" color={Palette.signal} />
               ) : (
-                <ThemedText
-                  type="linkPrimary"
-                  style={timeLeft > 0 && styles.linkDisabled}>
+                <StaxisText
+                  variant="cardAction"
+                  style={timeLeft > 0 ? { opacity: 0.5 } : undefined}
+                >
                   {timeLeft > 0 ? `Resend in ${timeLeft}s` : 'Resend code'}
-                </ThemedText>
+                </StaxisText>
               )}
             </Pressable>
-          </ThemedView>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  flex: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: Colors.bgApp },
+  flex: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.three,
-    alignSelf: 'center',
-    width: '100%',
-    maxWidth: MaxContentWidth,
+    paddingHorizontal: Spacing.xxl,
+    gap: Spacing.sm,
   },
-  title: {
-    marginBottom: -Spacing.two,
-  },
-  field: {
-    gap: Spacing.one,
-  },
+  subtitle: { marginBottom: Spacing.lg },
   otpInput: {
     textAlign: 'center',
+    fontFamily: FontFamily.monoMedium,
     fontSize: 24,
     letterSpacing: 8,
-  },
-  fieldError: {
-    color: '#e5484d',
-  },
-  button: {
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#208AEF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: Spacing.two,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#ffffff',
   },
   resendRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: Spacing.one,
-    marginTop: Spacing.two,
-  },
-  linkDisabled: {
-    opacity: 0.5,
+    gap: Spacing.xs,
+    marginTop: Spacing.lg,
   },
 });

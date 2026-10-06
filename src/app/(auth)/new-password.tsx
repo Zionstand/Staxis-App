@@ -6,15 +6,14 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
+  View,
 } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { ThemedTextInput } from '@/components/ui/themed-text-input';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { StaxisButton, StaxisText } from '@/components/staxis';
+import { StaxisInput } from '@/components/staxis';
+import { Colors, Palette, Spacing } from '@/constants/staxis-theme';
 import { postData } from '@/lib/api';
 import { maskEmail } from '@/lib/utils';
 import { NewPasswordSchema, NewPasswordSchemaType } from '@/lib/zod-schema';
@@ -52,149 +51,103 @@ export default function NewPasswordScreen() {
 
   if (success) {
     return (
-      <ThemedView style={styles.container}>
-        <ThemedView style={styles.scrollContent}>
-          <ThemedText type="subtitle" style={styles.title}>
+      <View style={styles.container}>
+        <View style={styles.scrollContent}>
+          <StaxisText variant="displaySm" style={{ color: Colors.text }}>
             Password updated
-          </ThemedText>
-          <ThemedText type="default" themeColor="textSecondary">
+          </StaxisText>
+          <StaxisText variant="bodySm" style={styles.subtitle}>
             Your password has been reset successfully. You can now sign in
             with your new password.
-          </ThemedText>
-          <Pressable
-            style={styles.button}
-            onPress={() => router.replace('/(auth)/login')}>
-            <ThemedText type="smallBold" style={styles.buttonText}>
-              Back to sign in
-            </ThemedText>
-          </Pressable>
-        </ThemedView>
-      </ThemedView>
+          </StaxisText>
+          <StaxisButton
+            label="Back to sign in"
+            onPress={() => router.replace('/(auth)/login')}
+            block
+          />
+        </View>
+      </View>
     );
   }
 
   return (
-    <ThemedView style={styles.container}>
+    <View style={styles.container}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled">
-          <ThemedText type="subtitle" style={styles.title}>
+          keyboardShouldPersistTaps="handled"
+        >
+          <StaxisText variant="displaySm" style={{ color: Colors.text }}>
             Set new password
-          </ThemedText>
-          <ThemedText type="default" themeColor="textSecondary">
+          </StaxisText>
+          <StaxisText variant="bodySm" style={styles.subtitle}>
             Create a new password for {maskEmail(email ?? '')}
-          </ThemedText>
+          </StaxisText>
 
-          <ThemedView style={styles.field}>
-            <ThemedText type="smallBold">New password</ThemedText>
-            <Controller
-              control={control}
-              name="newPassword"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <ThemedTextInput
-                  placeholder="••••••••"
-                  secureTextEntry
-                  autoComplete="password-new"
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  value={value}
-                />
-              )}
-            />
-            {errors.newPassword && (
-              <ThemedText type="small" style={styles.fieldError}>
-                {errors.newPassword.message}
-              </ThemedText>
+          <Controller
+            control={control}
+            name="newPassword"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <StaxisInput
+                label="New password"
+                placeholder="Enter new password"
+                secureTextEntry
+                autoComplete="password-new"
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+                error={errors.newPassword?.message}
+              />
             )}
-          </ThemedView>
+          />
 
-          <ThemedView style={styles.field}>
-            <ThemedText type="smallBold">Confirm password</ThemedText>
-            <Controller
-              control={control}
-              name="confirmPassword"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <ThemedTextInput
-                  placeholder="••••••••"
-                  secureTextEntry
-                  autoComplete="password-new"
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  value={value}
-                />
-              )}
-            />
-            {errors.confirmPassword && (
-              <ThemedText type="small" style={styles.fieldError}>
-                {errors.confirmPassword.message}
-              </ThemedText>
+          <Controller
+            control={control}
+            name="confirmPassword"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <StaxisInput
+                label="Confirm password"
+                placeholder="Re-enter new password"
+                secureTextEntry
+                autoComplete="password-new"
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+                error={errors.confirmPassword?.message}
+              />
             )}
-          </ThemedView>
+          />
 
           {submitError && (
-            <ThemedText type="small" style={styles.fieldError}>
+            <StaxisText variant="formHint" style={{ color: Palette.signal }}>
               {submitError}
-            </ThemedText>
+            </StaxisText>
           )}
 
-          <Pressable
-            style={[styles.button, loading && styles.buttonDisabled]}
+          <StaxisButton
+            label={loading ? '' : 'Update password'}
             onPress={handleSubmit(onSubmit)}
-            disabled={loading}>
-            {loading ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <ThemedText type="smallBold" style={styles.buttonText}>
-                Update password
-              </ThemedText>
-            )}
-          </Pressable>
+            disabled={loading}
+            block
+            icon={loading ? <ActivityIndicator color={Palette.bone} /> : undefined}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  flex: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: Colors.bgApp },
+  flex: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.three,
-    alignSelf: 'center',
-    width: '100%',
-    maxWidth: MaxContentWidth,
+    paddingHorizontal: Spacing.xxl,
+    gap: Spacing.sm,
   },
-  title: {
-    marginBottom: -Spacing.two,
-  },
-  field: {
-    gap: Spacing.one,
-  },
-  fieldError: {
-    color: '#e5484d',
-  },
-  button: {
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#208AEF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: Spacing.two,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#ffffff',
-  },
+  subtitle: { marginBottom: Spacing.lg },
 });

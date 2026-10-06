@@ -6,17 +6,14 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Switch,
+  View,
 } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { ThemedTextInput } from '@/components/ui/themed-text-input';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { StaxisButton, StaxisInput, StaxisText } from '@/components/staxis';
+import { Colors, Palette, Spacing } from '@/constants/staxis-theme';
 import { postData } from '@/lib/api';
 import { tokenStorage } from '@/lib/token-storage';
 import { RegisterSchema, RegisterSchemaType } from '@/lib/zod-schema';
@@ -29,7 +26,6 @@ type RegisterResponse = {
 };
 
 export default function RegisterScreen() {
-  const theme = useTheme();
   const setUser = useAuth((s) => s.setUser);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -69,271 +65,199 @@ export default function RegisterScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
+    <View style={styles.container}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled">
-          <ThemedText type="subtitle" style={styles.title}>
+          keyboardShouldPersistTaps="handled"
+        >
+          <StaxisText variant="displaySm" style={{ color: Colors.text }}>
             Create an account
-          </ThemedText>
-          <ThemedText type="default" themeColor="textSecondary">
-            Get started with Care+
-          </ThemedText>
+          </StaxisText>
+          <StaxisText variant="bodySm" style={styles.subtitle}>
+            Get started with STAXIS
+          </StaxisText>
 
-          <ThemedView style={styles.row}>
-            <ThemedView style={[styles.field, styles.flex]}>
-              <ThemedText type="smallBold">First name</ThemedText>
+          <View style={styles.nameRow}>
+            <View style={styles.flex}>
               <Controller
                 control={control}
                 name="firstName"
                 render={({ field: { onChange, onBlur, value } }) => (
-                  <ThemedTextInput
+                  <StaxisInput
+                    label="First name"
                     placeholder="Jane"
                     autoComplete="given-name"
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
+                    error={errors.firstName?.message}
                   />
                 )}
               />
-              {errors.firstName && (
-                <ThemedText type="small" style={styles.fieldError}>
-                  {errors.firstName.message}
-                </ThemedText>
-              )}
-            </ThemedView>
-
-            <ThemedView style={[styles.field, styles.flex]}>
-              <ThemedText type="smallBold">Last name</ThemedText>
+            </View>
+            <View style={styles.flex}>
               <Controller
                 control={control}
                 name="lastName"
                 render={({ field: { onChange, onBlur, value } }) => (
-                  <ThemedTextInput
+                  <StaxisInput
+                    label="Last name"
                     placeholder="Doe"
                     autoComplete="family-name"
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
+                    error={errors.lastName?.message}
                   />
                 )}
               />
-              {errors.lastName && (
-                <ThemedText type="small" style={styles.fieldError}>
-                  {errors.lastName.message}
-                </ThemedText>
-              )}
-            </ThemedView>
-          </ThemedView>
+            </View>
+          </View>
 
-          <ThemedView style={styles.field}>
-            <ThemedText type="smallBold">Email</ThemedText>
-            <Controller
-              control={control}
-              name="email"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <ThemedTextInput
-                  placeholder="name@example.com"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  keyboardType="email-address"
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  value={value}
-                />
-              )}
-            />
-            {errors.email && (
-              <ThemedText type="small" style={styles.fieldError}>
-                {errors.email.message}
-              </ThemedText>
-            )}
-          </ThemedView>
-
-          <ThemedView style={styles.field}>
-            <ThemedText type="smallBold">Phone number</ThemedText>
-            <Controller
-              control={control}
-              name="phoneNumber"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <ThemedTextInput
-                  placeholder="+2348012345678"
-                  autoComplete="tel"
-                  keyboardType="phone-pad"
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  value={value}
-                />
-              )}
-            />
-            {errors.phoneNumber && (
-              <ThemedText type="small" style={styles.fieldError}>
-                {errors.phoneNumber.message}
-              </ThemedText>
-            )}
-          </ThemedView>
-
-          <ThemedView style={styles.field}>
-            <ThemedText type="smallBold">Password</ThemedText>
-            <Controller
-              control={control}
-              name="password"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <ThemedTextInput
-                  placeholder="••••••••"
-                  secureTextEntry
-                  autoComplete="password-new"
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  value={value}
-                />
-              )}
-            />
-            {errors.password && (
-              <ThemedText type="small" style={styles.fieldError}>
-                {errors.password.message}
-              </ThemedText>
-            )}
-          </ThemedView>
-
-          <ThemedView style={styles.field}>
-            <ThemedText type="smallBold">Confirm password</ThemedText>
-            <Controller
-              control={control}
-              name="confirmPassword"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <ThemedTextInput
-                  placeholder="••••••••"
-                  secureTextEntry
-                  autoComplete="password-new"
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  value={value}
-                />
-              )}
-            />
-            {errors.confirmPassword && (
-              <ThemedText type="small" style={styles.fieldError}>
-                {errors.confirmPassword.message}
-              </ThemedText>
-            )}
-          </ThemedView>
-
-          <ThemedView style={styles.field}>
-            <ThemedView style={styles.termsRow}>
-              <Controller
-                control={control}
-                name="acceptTerms"
-                render={({ field: { onChange, value } }) => (
-                  <Switch
-                    value={!!value}
-                    onValueChange={onChange}
-                    trackColor={{ true: '#208AEF' }}
-                  />
-                )}
+          <Controller
+            control={control}
+            name="email"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <StaxisInput
+                label="Email"
+                placeholder="name@example.com"
+                autoCapitalize="none"
+                autoComplete="email"
+                keyboardType="email-address"
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+                error={errors.email?.message}
               />
-              <ThemedText type="small" style={styles.termsText}>
-                I accept the Terms of Service and Privacy Policy
-              </ThemedText>
-            </ThemedView>
-            {errors.acceptTerms && (
-              <ThemedText type="small" style={styles.fieldError}>
-                {errors.acceptTerms.message}
-              </ThemedText>
             )}
-          </ThemedView>
+          />
 
-          {submitError && (
-            <ThemedText type="small" style={styles.fieldError}>
-              {submitError}
-            </ThemedText>
+          <Controller
+            control={control}
+            name="phoneNumber"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <StaxisInput
+                label="Phone number"
+                placeholder="+2348012345678"
+                autoComplete="tel"
+                keyboardType="phone-pad"
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+                error={errors.phoneNumber?.message}
+              />
+            )}
+          />
+
+          <Controller
+            control={control}
+            name="password"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <StaxisInput
+                label="Password"
+                placeholder="Create a strong password"
+                secureTextEntry
+                autoComplete="password-new"
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+                error={errors.password?.message}
+              />
+            )}
+          />
+
+          <Controller
+            control={control}
+            name="confirmPassword"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <StaxisInput
+                label="Confirm password"
+                placeholder="Re-enter your password"
+                secureTextEntry
+                autoComplete="password-new"
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+                error={errors.confirmPassword?.message}
+              />
+            )}
+          />
+
+          <View style={styles.termsRow}>
+            <Controller
+              control={control}
+              name="acceptTerms"
+              render={({ field: { onChange, value } }) => (
+                <Switch
+                  value={!!value}
+                  onValueChange={onChange}
+                  trackColor={{ true: Palette.signal }}
+                />
+              )}
+            />
+            <StaxisText variant="bodySm" style={styles.termsText}>
+              I accept the Terms of Service and Privacy Policy
+            </StaxisText>
+          </View>
+          {errors.acceptTerms && (
+            <StaxisText variant="formHint" style={{ color: Palette.signal }}>
+              {errors.acceptTerms.message}
+            </StaxisText>
           )}
 
-          <Pressable
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleSubmit(onSubmit)}
-            disabled={loading}>
-            {loading ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <ThemedText type="smallBold" style={styles.buttonText}>
-                Create account
-              </ThemedText>
-            )}
-          </Pressable>
+          {submitError && (
+            <StaxisText variant="formHint" style={{ color: Palette.signal }}>
+              {submitError}
+            </StaxisText>
+          )}
 
-          <ThemedView style={styles.linkRow}>
-            <ThemedText type="link" themeColor="textSecondary">
+          <StaxisButton
+            label={loading ? '' : 'Create account'}
+            onPress={handleSubmit(onSubmit)}
+            disabled={loading}
+            block
+            icon={loading ? <ActivityIndicator color={Palette.bone} /> : undefined}
+          />
+
+          <View style={styles.linkRow}>
+            <StaxisText variant="bodySm">
               Already have an account?{' '}
-            </ThemedText>
+            </StaxisText>
             <Link href="/(auth)/login">
-              <ThemedText type="linkPrimary">Sign in</ThemedText>
+              <StaxisText variant="cardAction">Sign in</StaxisText>
             </Link>
-          </ThemedView>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  flex: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: Colors.bgApp },
+  flex: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.four,
-    gap: Spacing.three,
-    alignSelf: 'center',
-    width: '100%',
-    maxWidth: MaxContentWidth,
+    paddingHorizontal: Spacing.xxl,
+    paddingVertical: Spacing.xxl,
+    gap: Spacing.sm,
   },
-  title: {
-    marginBottom: -Spacing.two,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: Spacing.three,
-  },
-  field: {
-    gap: Spacing.one,
-  },
-  fieldError: {
-    color: '#e5484d',
-  },
+  subtitle: { marginBottom: Spacing.lg },
+  nameRow: { flexDirection: 'row', gap: Spacing.md },
   termsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
+    gap: Spacing.sm,
   },
-  termsText: {
-    flex: 1,
-  },
-  button: {
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#208AEF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: Spacing.two,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#ffffff',
-  },
+  termsText: { flex: 1 },
   linkRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: Spacing.two,
+    marginTop: Spacing.lg,
   },
 });
