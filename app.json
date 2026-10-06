@@ -51,14 +51,6 @@
           ]
         }
       ],
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "usesCleartextTraffic": true
-          }
-        }
-      ],
       "expo-image",
       "expo-web-browser",
       "expo-status-bar"
