@@ -10,55 +10,48 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Badge } from '@/components/ui/badge';
-import { ProgressBar } from '@/components/ui/progress-bar';
-import { TxnRow } from '@/components/ui/txn-row';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import {
+  Banner,
+  EmptyState,
+  MetricCard,
+  PageHeader,
+  ProgressBar,
+  SectionLabel,
+  StaxisCard,
+  StaxisTag,
+  StaxisText,
+} from '@/components/staxis';
+import { Colors, Palette, Radius, Spacing } from '@/constants/staxis-theme';
 import { fetchData } from '@/lib/api';
 import { ApiPlan, DashboardData } from '@/lib/types';
 import { daysUntil, fmtDate, fmtNaira } from '@/lib/utils';
 
-const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
-  ACTIVE: { bg: '#dcfce7', color: '#15803d' },
-  TRIAL: { bg: '#fef3c7', color: '#b45309' },
-  PAST_DUE: { bg: '#ffe4e6', color: '#be123c' },
-  CANCELLED: { bg: '#e2e8f0', color: '#475569' },
-};
-
 function PlanRow({ plan }: { plan: ApiPlan }) {
   return (
-    <ThemedView type="backgroundElement" style={styles.planCard}>
+    <View style={styles.planCard}>
       <View style={styles.row}>
-        <View style={styles.planTitleWrap}>
-          <ThemedText type="smallBold" numberOfLines={1}>
+        <View style={{ flex: 1 }}>
+          <StaxisText variant="listTitle" numberOfLines={1}>
             {plan.name}
-          </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+          </StaxisText>
+          <StaxisText variant="listSub" numberOfLines={1}>
             {plan.forLabel}
-          </ThemedText>
+          </StaxisText>
         </View>
-        <ThemedText type="smallBold">{fmtNaira(plan.price)}/mo</ThemedText>
+        <StaxisText variant="metricLabel">
+          {fmtNaira(plan.price)}/mo
+        </StaxisText>
       </View>
       {!!plan.responseTime && (
-        <ThemedText type="small" themeColor="textSecondary">
-          ⚡ {plan.responseTime} response time
-        </ThemedText>
+        <StaxisText variant="listSub">
+          {plan.responseTime} response time
+        </StaxisText>
       )}
-      {plan.features?.slice(0, 4).map((f) => (
-        <ThemedText key={f} type="small" themeColor="textSecondary">
-          ✓ {f}
-        </ThemedText>
-      ))}
-    </ThemedView>
+    </View>
   );
 }
 
 export default function BillingScreen() {
-  const theme = useTheme();
-
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -90,22 +83,21 @@ export default function BillingScreen() {
 
   if (loading && !data) {
     return (
-      <ThemedView style={styles.centered}>
-        <ActivityIndicator />
-      </ThemedView>
+      <View style={styles.centered}>
+        <ActivityIndicator color={Palette.signal} />
+      </View>
     );
   }
 
   if (error && !data) {
     return (
-      <ThemedView style={styles.centered}>
-        <ThemedText type="default" themeColor="textSecondary">
-          Couldn&apos;t load your billing details.
-        </ThemedText>
-        <Pressable onPress={load}>
-          <ThemedText type="linkPrimary">Try again</ThemedText>
-        </Pressable>
-      </ThemedView>
+      <View style={styles.centered}>
+        <EmptyState
+          title="Couldn't load billing"
+          message="Pull down to try again."
+          action={{ label: 'Retry', onPress: load }}
+        />
+      </View>
     );
   }
 
@@ -115,194 +107,205 @@ export default function BillingScreen() {
   const totalSpent = data?.totalSpent ?? 0;
 
   const status = company?.status ?? 'ACTIVE';
-  const statusStyle = STATUS_STYLES[status] ?? STATUS_STYLES.ACTIVE;
   const paymentVerified = company?.paymentVerified ?? false;
   const isTrial = status === 'TRIAL';
   const isPastDue = status === 'PAST_DUE';
-  const isRecurring = company?.subscriptionType === 'subscription';
 
   const subtotal = plans.reduce((sum, p) => sum + (p.price ?? 0), 0);
   const bundleDiscount = company?.bundleDiscount ?? 0;
   const total = company?.amount ?? 0;
-  const setupFees = plans.reduce((sum, p) => sum + (p.setupFee ?? 0), 0);
 
   const nextBilling = company?.nextBilling ?? null;
   const daysToRenewal = nextBilling ? daysUntil(nextBilling) : null;
-  const renewalProgress =
-    nextBilling && daysToRenewal !== null
-      ? Math.max(0, Math.min(100, ((30 - daysToRenewal) / 30) * 100))
-      : 0;
 
   const trialEndsAt = company?.trialEndsAt ?? null;
   const trialDaysLeft = trialEndsAt ? daysUntil(trialEndsAt) : 0;
   const trialProgress = trialEndsAt
-    ? Math.max(0, Math.min(100, ((14 - trialDaysLeft) / 14) * 100))
+    ? Math.max(0, Math.min(1, (14 - trialDaysLeft) / 14))
     : 0;
+
+  const renewalProgress =
+    nextBilling && daysToRenewal !== null
+      ? Math.max(0, Math.min(1, (30 - daysToRenewal) / 30))
+      : 0;
 
   return (
     <ScrollView
-      style={styles.scrollView}
-      contentContainerStyle={styles.contentContainer}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <View style={styles.header}>
-          <ThemedText type="subtitle">Billing</ThemedText>
-          {company && (
-            <ThemedText type="small" themeColor="textSecondary">
-              {company.name}
-            </ThemedText>
-          )}
-        </View>
+      style={styles.scroll}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      <SafeAreaView edges={['top']} style={styles.safe}>
+        <PageHeader title="Billing" subtitle={company?.name} />
 
         {!company ? (
-          <ThemedView type="backgroundElement" style={styles.card}>
-            <ThemedText type="smallBold">No subscription yet</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              Once your company is set up with a plan, your billing details will
-              appear here.
-            </ThemedText>
-          </ThemedView>
+          <EmptyState
+            title="No subscription yet"
+            message="Once your company is set up with a plan, billing details will appear here."
+          />
         ) : (
           <>
-            {/* Subscription status */}
-            <ThemedView type="backgroundElement" style={styles.card}>
+            {/* ── Banners ── */}
+            {isPastDue && (
+              <Banner
+                variant="danger"
+                title="Payment overdue"
+                message="Settle your balance to restore full access."
+                action="Pay now"
+                onAction={() => {/* TODO: payment flow */}}
+              />
+            )}
+
+            {isTrial && trialEndsAt && (
+              <Banner
+                variant="warn"
+                title={`Trial — ${trialDaysLeft} day${trialDaysLeft !== 1 ? 's' : ''} left`}
+                message={`Expires ${fmtDate(trialEndsAt)}.`}
+                action="Upgrade"
+                onAction={() => {/* TODO: upgrade flow */}}
+              />
+            )}
+
+            {/* ── Status + Spend overview ── */}
+            <View style={styles.metricRow}>
+              <MetricCard
+                label="Monthly Cost"
+                value={total > 0 ? `${fmtNaira(total)}/mo` : '—'}
+                footer={
+                  bundleDiscount > 0
+                    ? `Saving ${fmtNaira(bundleDiscount)}/mo`
+                    : undefined
+                }
+                trend={bundleDiscount > 0 ? 'up' : undefined}
+              />
+              <MetricCard
+                label="Total Spent"
+                value={fmtNaira(totalSpent)}
+                footer="Lifetime"
+              />
+            </View>
+
+            {/* ── Subscription status card ── */}
+            <StaxisCard title="Subscription">
               <View style={styles.row}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Subscription
-                </ThemedText>
-                <Badge label={status} bg={statusStyle.bg} color={statusStyle.color} />
+                <StaxisText variant="bodyBase">Status</StaxisText>
+                <StaxisTag
+                  variant={
+                    isPastDue ? 'danger' : isTrial ? 'warn' : 'success'
+                  }
+                  label={status.replace('_', ' ')}
+                />
               </View>
               <View style={styles.row}>
-                <ThemedText type="default">
-                  {isRecurring ? 'Recurring plan' : 'One-time payment'}
-                </ThemedText>
-                {paymentVerified ? (
-                  <Badge label="PAID" bg="#dbeafe" color="#1d4ed8" />
-                ) : (
-                  <Badge label="UNPAID" bg="#fef3c7" color="#b45309" />
-                )}
+                <StaxisText variant="bodyBase">Payment</StaxisText>
+                <StaxisTag
+                  variant={paymentVerified ? 'success' : 'warn'}
+                  label={paymentVerified ? 'Paid' : 'Unpaid'}
+                />
               </View>
 
+              {/* Renewal / trial progress */}
               {isTrial && trialEndsAt && (
-                <View style={styles.section}>
+                <View style={styles.progressSection}>
                   <View style={styles.row}>
-                    <ThemedText type="small" themeColor="textSecondary">
+                    <StaxisText variant="slaProgress">
                       Trial ends {fmtDate(trialEndsAt)}
-                    </ThemedText>
-                    <ThemedText type="smallBold">{trialDaysLeft}d left</ThemedText>
+                    </StaxisText>
+                    <StaxisText variant="slaProgressBold">
+                      {trialDaysLeft}d left
+                    </StaxisText>
                   </View>
-                  <ProgressBar value={trialProgress} fillColor="#f59e0b" trackColor="#fde68a" />
+                  <ProgressBar progress={trialProgress} color={Palette.warn} />
                 </View>
               )}
 
               {!isTrial && paymentVerified && nextBilling && daysToRenewal !== null && (
-                <View style={styles.section}>
+                <View style={styles.progressSection}>
                   <View style={styles.row}>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {isRecurring ? 'Renews' : 'Valid until'} {fmtDate(nextBilling)}
-                    </ThemedText>
-                    <ThemedText type="smallBold">{daysToRenewal}d left</ThemedText>
+                    <StaxisText variant="slaProgress">
+                      Renews {fmtDate(nextBilling)}
+                    </StaxisText>
+                    <StaxisText variant="slaProgressBold">
+                      {daysToRenewal}d left
+                    </StaxisText>
                   </View>
-                  <ProgressBar value={renewalProgress} />
+                  <ProgressBar progress={renewalProgress} />
                 </View>
               )}
+            </StaxisCard>
 
-              {isPastDue && (
-                <ThemedText type="small" style={styles.warnText}>
-                  ⚠️ Your payment is overdue. Settle it to restore full access.
-                </ThemedText>
-              )}
-            </ThemedView>
-
-            {/* Plans */}
+            {/* ── Plans ── */}
             <View style={styles.section}>
-              <ThemedText type="smallBold" style={styles.sectionLabel}>
-                Your plan{plans.length > 1 ? 's' : ''}
-              </ThemedText>
+              <SectionLabel>
+                {`YOUR PLAN${plans.length > 1 ? 'S' : ''}`}
+              </SectionLabel>
               {plans.length > 0 ? (
                 plans.map((p) => <PlanRow key={p.id} plan={p} />)
               ) : (
-                <ThemedView type="backgroundElement" style={styles.card}>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    No plan selected.
-                  </ThemedText>
-                </ThemedView>
+                <StaxisText variant="bodySm">No plan selected.</StaxisText>
               )}
             </View>
 
-            {/* Cost breakdown */}
-            <ThemedView type="backgroundElement" style={styles.card}>
-              <ThemedText type="smallBold" style={styles.sectionLabel}>
-                Monthly cost
-              </ThemedText>
-              <View style={styles.row}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Subtotal
-                </ThemedText>
-                <ThemedText type="small">{fmtNaira(subtotal)}</ThemedText>
-              </View>
-              {bundleDiscount > 0 && (
+            {/* ── Cost breakdown ── */}
+            {plans.length > 0 && (
+              <StaxisCard title="Cost Breakdown">
                 <View style={styles.row}>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    Bundle discount
-                  </ThemedText>
-                  <ThemedText type="small" style={styles.discount}>
-                    −{fmtNaira(bundleDiscount)}
-                  </ThemedText>
+                  <StaxisText variant="bodySm">Subtotal</StaxisText>
+                  <StaxisText variant="bodySm">{fmtNaira(subtotal)}</StaxisText>
                 </View>
-              )}
-              <View style={[styles.row, styles.totalRow]}>
-                <ThemedText type="smallBold">Total per month</ThemedText>
-                <ThemedText type="smallBold">{fmtNaira(total)}</ThemedText>
-              </View>
-              {setupFees > 0 && (
-                <ThemedText type="small" themeColor="textSecondary">
-                  + {fmtNaira(setupFees)} one-time setup fee
-                </ThemedText>
-              )}
-            </ThemedView>
-
-            {/* Billing history */}
-            <View style={styles.section}>
-              <View style={styles.row}>
-                <ThemedText type="smallBold" style={styles.sectionLabel}>
-                  Recent payments
-                </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {fmtNaira(totalSpent)} lifetime
-                </ThemedText>
-              </View>
-              <ThemedView type="backgroundElement" style={styles.card}>
-                {transactions.length > 0 ? (
-                  <>
-                    {transactions.map((t, i) => (
-                      <View key={t.id}>
-                        {i > 0 && (
-                          <View
-                            style={[styles.divider, { backgroundColor: theme.backgroundSelected }]}
-                          />
-                        )}
-                        <TxnRow txn={t} />
-                      </View>
-                    ))}
-                    <Pressable
-                      onPress={() => router.push('/(tabs)/billing/transactions')}
-                      style={({ pressed }) => [styles.viewAll, pressed && styles.pressed]}>
-                      <ThemedText type="linkPrimary">View all payments</ThemedText>
-                    </Pressable>
-                  </>
-                ) : (
-                  <ThemedText type="small" themeColor="textSecondary">
-                    No payments yet.
-                  </ThemedText>
+                {bundleDiscount > 0 && (
+                  <View style={styles.row}>
+                    <StaxisText variant="bodySm">Bundle discount</StaxisText>
+                    <StaxisText variant="bodySm" style={{ color: Palette.success }}>
+                      -{fmtNaira(bundleDiscount)}
+                    </StaxisText>
+                  </View>
                 )}
-              </ThemedView>
-            </View>
+                <View style={[styles.row, styles.totalRow]}>
+                  <StaxisText variant="listTitle">Total/month</StaxisText>
+                  <StaxisText variant="listTitle">{fmtNaira(total)}</StaxisText>
+                </View>
+              </StaxisCard>
+            )}
 
-            <ThemedText type="small" themeColor="textSecondary" style={styles.footnote}>
-              To change your plan or update payment details, visit the Care+ web
-              dashboard or reach out via Support.
-            </ThemedText>
+            {/* ── Recent payments ── */}
+            <StaxisCard
+              title="Recent Payments"
+              subtitle={`${fmtNaira(totalSpent)} lifetime`}
+              headerRight={
+                transactions.length > 0 ? (
+                  <Pressable
+                    onPress={() => router.push('/(tabs)/billing/transactions')}
+                  >
+                    <StaxisText variant="cardAction">View all</StaxisText>
+                  </Pressable>
+                ) : undefined
+              }
+            >
+              {transactions.length > 0 ? (
+                transactions.slice(0, 3).map((t) => (
+                  <View key={t.id} style={styles.txnRow}>
+                    <View style={{ flex: 1 }}>
+                      <StaxisText variant="listTitle">{t.description}</StaxisText>
+                      <StaxisText variant="listTime">{fmtDate(t.date)}</StaxisText>
+                    </View>
+                    <StaxisText variant="listTitle">{fmtNaira(t.amount)}</StaxisText>
+                  </View>
+                ))
+              ) : (
+                <EmptyState
+                  title="No payments yet"
+                  message="Your transaction history will appear here."
+                />
+              )}
+            </StaxisCard>
+
+            <StaxisText variant="formHint" style={styles.footnote}>
+              To change your plan or update payment details, visit the web
+              dashboard or contact Support.
+            </StaxisText>
           </>
         )}
       </SafeAreaView>
@@ -311,80 +314,60 @@ export default function BillingScreen() {
 }
 
 const styles = StyleSheet.create({
-  scrollView: {
+  scroll: { flex: 1, backgroundColor: Colors.bgApp },
+  content: { flexGrow: 1 },
+  safe: {
     flex: 1,
-  },
-  contentContainer: {
-    flexGrow: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.xxxl,
+    gap: Spacing.lg,
   },
   centered: {
     flex: 1,
+    backgroundColor: Colors.bgApp,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.two,
-  },
-  safeArea: {
-    flex: 1,
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    gap: Spacing.three,
-  },
-  header: {
-    gap: Spacing.one,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: Spacing.two,
+    gap: Spacing.sm,
   },
-  card: {
-    borderRadius: Spacing.three,
-    padding: Spacing.three,
-    gap: Spacing.two,
+  metricRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  section: { gap: Spacing.sm },
+  progressSection: {
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
+    paddingTop: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: Colors.line,
   },
   planCard: {
-    borderRadius: Spacing.three,
-    padding: Spacing.three,
-    gap: Spacing.one,
-  },
-  planTitleWrap: {
-    flexShrink: 1,
-    gap: Spacing.half,
-  },
-  section: {
-    gap: Spacing.two,
-  },
-  sectionLabel: {
-    marginBottom: Spacing.half,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.line,
+    borderRadius: Radius.md,
+    padding: Spacing.lg,
+    gap: Spacing.xs,
   },
   totalRow: {
-    marginTop: Spacing.one,
+    marginTop: Spacing.sm,
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: Colors.line,
   },
-  discount: {
-    color: '#15803d',
-  },
-  warnText: {
-    color: '#be123c',
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    marginVertical: Spacing.one,
-  },
-  viewAll: {
-    marginTop: Spacing.one,
+  txnRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.line,
   },
-  pressed: {
-    opacity: 0.6,
-  },
-  footnote: {
-    marginTop: Spacing.one,
-    textAlign: 'center',
-  },
+  footnote: { textAlign: 'center', marginTop: Spacing.sm },
 });

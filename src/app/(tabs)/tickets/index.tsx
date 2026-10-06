@@ -10,12 +10,14 @@ import {
   View,
 } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Badge } from '@/components/ui/badge';
-import { ThemedTextInput } from '@/components/ui/themed-text-input';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import {
+  EmptyState,
+  StaxisButton,
+  StaxisInput,
+  StaxisTag,
+  StaxisText,
+} from '@/components/staxis';
+import { Colors, Palette, Radius, Spacing } from '@/constants/staxis-theme';
 import { fetchData } from '@/lib/api';
 import {
   STATUS_FILTERS,
@@ -28,61 +30,52 @@ import {
 import { TicketListItem, TicketStatus } from '@/lib/types';
 import { fromNow } from '@/lib/utils';
 
-function HeaderNewButton() {
-  return (
-    <Pressable
-      onPress={() => router.push('/(tabs)/tickets/new')}
-      hitSlop={8}>
-      <ThemedText type="smallBold" themeColor="text">
-        + New
-      </ThemedText>
-    </Pressable>
-  );
-}
-
 function TicketRow({ ticket }: { ticket: TicketListItem }) {
   const ss = statusStyle(ticket.status);
-  const ps = priorityStyle(ticket.priority);
 
   return (
     <Pressable
       onPress={() => router.push(`/(tabs)/tickets/${ticket.id}`)}
-      style={({ pressed }) => pressed && styles.pressed}>
-      <ThemedView type="backgroundElement" style={styles.card}>
-        <View style={styles.cardTop}>
-          <ThemedText type="small" themeColor="textSecondary">
-            #{ticket.ticketNumber}
-          </ThemedText>
-          <Badge label={statusLabel(ticket.status)} bg={ss.bg} color={ss.color} />
-        </View>
+      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+    >
+      <View style={styles.cardTop}>
+        <StaxisText variant="tableCellMono">#{ticket.ticketNumber}</StaxisText>
+        <StaxisTag
+          variant={
+            ticket.status === 'RESOLVED' || ticket.status === 'CLOSED'
+              ? 'success'
+              : ticket.status === 'IN_PROGRESS'
+                ? 'warn'
+                : ticket.status === 'ON_HOLD'
+                  ? 'neutral'
+                  : 'info'
+          }
+          label={statusLabel(ticket.status)}
+        />
+      </View>
 
-        <ThemedText type="smallBold" numberOfLines={2}>
-          {ticket.subject}
-        </ThemedText>
+      <StaxisText variant="listTitle" numberOfLines={2}>
+        {ticket.subject}
+      </StaxisText>
 
-        <View style={styles.cardBottom}>
-          <View style={styles.cardMeta}>
-            <Badge
-              label={priorityLabel(ticket.priority)}
-              bg={ps.bg}
-              color={ps.color}
-            />
-            <ThemedText type="small" themeColor="textSecondary">
-              {categoryLabel(ticket.category)}
-            </ThemedText>
-          </View>
-          <ThemedText type="small" themeColor="textSecondary">
-            {fromNow(ticket.updatedAt)}
-          </ThemedText>
-        </View>
-      </ThemedView>
+      <View style={styles.cardBottom}>
+        <StaxisTag
+          variant={
+            ticket.priority === 'URGENT'
+              ? 'danger'
+              : ticket.priority === 'HIGH'
+                ? 'warn'
+                : 'neutral'
+          }
+          label={priorityLabel(ticket.priority)}
+        />
+        <StaxisText variant="listTime">{fromNow(ticket.updatedAt)}</StaxisText>
+      </View>
     </Pressable>
   );
 }
 
 export default function TicketsListScreen() {
-  const theme = useTheme();
-
   const [tickets, setTickets] = useState<TicketListItem[]>([]);
   const [status, setStatus] = useState<TicketStatus | undefined>(undefined);
   const [search, setSearch] = useState('');
@@ -91,7 +84,6 @@ export default function TicketsListScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
 
-  // Debounce the search box so we don't hit the API on every keystroke.
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search.trim()), 350);
     return () => clearTimeout(t);
@@ -116,7 +108,6 @@ export default function TicketsListScreen() {
     }
   }, [status, debounced]);
 
-  // Reload on focus (e.g. returning from a reply/new ticket) and on filter change.
   useFocusEffect(
     useCallback(() => {
       load();
@@ -130,7 +121,18 @@ export default function TicketsListScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ headerRight: () => <HeaderNewButton /> }} />
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <Pressable
+              onPress={() => router.push('/(tabs)/tickets/new')}
+              hitSlop={8}
+            >
+              <StaxisText variant="cardAction">+ New</StaxisText>
+            </Pressable>
+          ),
+        }}
+      />
       <FlatList
         data={tickets}
         keyExtractor={(item) => item.id}
@@ -142,8 +144,8 @@ export default function TicketsListScreen() {
         }
         ListHeaderComponent={
           <View style={styles.header}>
-            <ThemedTextInput
-              placeholder="Search tickets"
+            <StaxisInput
+              placeholder="Search tickets..."
               autoCapitalize="none"
               value={search}
               onChangeText={setSearch}
@@ -152,7 +154,8 @@ export default function TicketsListScreen() {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filters}>
+              contentContainerStyle={styles.filters}
+            >
               {STATUS_FILTERS.map((f) => {
                 const active = status === f.value;
                 return (
@@ -161,17 +164,17 @@ export default function TicketsListScreen() {
                     onPress={() => setStatus(f.value)}
                     style={[
                       styles.chip,
-                      {
-                        backgroundColor: active
-                          ? theme.text
-                          : theme.backgroundElement,
-                      },
-                    ]}>
-                    <ThemedText
-                      type="small"
-                      style={{ color: active ? theme.background : theme.textSecondary }}>
+                      active ? styles.chipActive : styles.chipInactive,
+                    ]}
+                  >
+                    <StaxisText
+                      variant="tag"
+                      style={{
+                        color: active ? Palette.bone : Colors.text2,
+                      }}
+                    >
                       {f.label}
-                    </ThemedText>
+                    </StaxisText>
                   </Pressable>
                 );
               })}
@@ -181,38 +184,27 @@ export default function TicketsListScreen() {
         ListEmptyComponent={
           loading ? (
             <View style={styles.centered}>
-              <ActivityIndicator />
+              <ActivityIndicator color={Palette.signal} />
             </View>
           ) : error ? (
-            <View style={styles.centered}>
-              <ThemedText type="default" themeColor="textSecondary">
-                Couldn&apos;t load your tickets.
-              </ThemedText>
-              <Pressable onPress={load}>
-                <ThemedText type="linkPrimary">Try again</ThemedText>
-              </Pressable>
-            </View>
+            <EmptyState
+              title="Couldn't load tickets"
+              message="Check your connection and try again."
+              action={{ label: 'Retry', onPress: load }}
+            />
           ) : (
-            <View style={styles.centered}>
-              <ThemedText type="subtitle" style={styles.emptyTitle}>
-                No tickets yet
-              </ThemedText>
-              <ThemedText
-                type="small"
-                themeColor="textSecondary"
-                style={styles.emptyText}>
-                {debounced || status
+            <EmptyState
+              title="No tickets"
+              message={
+                debounced || status
                   ? 'No tickets match your filters.'
-                  : 'Need a hand? Open a ticket and our team will get back to you.'}
-              </ThemedText>
-              <Pressable
-                style={styles.emptyButton}
-                onPress={() => router.push('/(tabs)/tickets/new')}>
-                <ThemedText type="smallBold" style={styles.emptyButtonText}>
-                  Create a ticket
-                </ThemedText>
-              </Pressable>
-            </View>
+                  : 'Need help? Open a ticket and our team will respond.'
+              }
+              action={{
+                label: 'Create a ticket',
+                onPress: () => router.push('/(tabs)/tickets/new'),
+              }}
+            />
           )
         }
       />
@@ -221,35 +213,29 @@ export default function TicketsListScreen() {
 }
 
 const styles = StyleSheet.create({
-  list: {
-    flex: 1,
-  },
+  list: { flex: 1, backgroundColor: Colors.bgApp },
   listContent: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    alignSelf: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingBottom: BottomTabInset + Spacing.four,
-    gap: Spacing.three,
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: Spacing.xxxl,
+    gap: Spacing.md,
     flexGrow: 1,
   },
-  header: {
-    gap: Spacing.three,
-    paddingTop: Spacing.three,
-  },
-  filters: {
-    gap: Spacing.two,
-    paddingRight: Spacing.four,
-  },
+  header: { gap: Spacing.md, paddingTop: Spacing.lg },
+  filters: { gap: Spacing.sm },
   chip: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
-    borderRadius: Spacing.five,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+    borderRadius: Radius.pill,
   },
+  chipActive: { backgroundColor: Palette.ink },
+  chipInactive: { backgroundColor: Palette.bone2 },
   card: {
-    borderRadius: Spacing.three,
-    padding: Spacing.three,
-    gap: Spacing.two,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.line,
+    borderRadius: Radius.md,
+    padding: Spacing.lg,
+    gap: Spacing.sm,
   },
   cardTop: {
     flexDirection: 'row',
@@ -260,42 +246,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: Spacing.two,
+    gap: Spacing.sm,
   },
-  cardMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    flexShrink: 1,
-  },
-  pressed: {
-    opacity: 0.7,
-  },
+  pressed: { opacity: 0.85, transform: [{ translateY: 1 }] },
   centered: {
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: Spacing.six,
-    gap: Spacing.two,
-  },
-  emptyTitle: {
-    fontSize: 22,
-    lineHeight: 28,
-  },
-  emptyText: {
-    textAlign: 'center',
-    maxWidth: 280,
-  },
-  emptyButton: {
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#208AEF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: Spacing.four,
-    marginTop: Spacing.two,
-  },
-  emptyButtonText: {
-    color: '#ffffff',
+    paddingTop: Spacing.xxxl,
   },
 });
