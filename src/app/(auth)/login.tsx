@@ -6,15 +6,19 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
+  View,
 } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { ThemedTextInput } from '@/components/ui/themed-text-input';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { StaxisButton, StaxisInput, StaxisText } from '@/components/staxis';
+import {
+  Colors,
+  FontFamily,
+  Palette,
+  Radius,
+  Spacing,
+} from '@/constants/staxis-theme';
 import { postData } from '@/lib/api';
 import { tokenStorage } from '@/lib/token-storage';
 import { LoginSchema, LoginSchemaType } from '@/lib/zod-schema';
@@ -58,151 +62,129 @@ export default function LoginScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
+    <View style={styles.container}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled">
-          <ThemedText type="subtitle" style={styles.title}>
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Brand mark */}
+          <View style={styles.brandMark}>
+            <StaxisText
+              variant="bodyBase"
+              style={styles.brandLetter}
+            >
+              S
+            </StaxisText>
+          </View>
+
+          <StaxisText variant="displaySm" style={styles.title}>
             Welcome back
-          </ThemedText>
-          <ThemedText type="default" themeColor="textSecondary">
-            Sign in to your Care+ account
-          </ThemedText>
+          </StaxisText>
+          <StaxisText variant="bodySm" style={styles.subtitle}>
+            Sign in to your STAXIS account
+          </StaxisText>
 
-          <ThemedView style={styles.field}>
-            <ThemedText type="smallBold">Email</ThemedText>
-            <Controller
-              control={control}
-              name="email"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <ThemedTextInput
-                  placeholder="name@example.com"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  keyboardType="email-address"
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  value={value}
-                />
-              )}
-            />
-            {errors.email && (
-              <ThemedText type="small" style={styles.fieldError}>
-                {errors.email.message}
-              </ThemedText>
+          <Controller
+            control={control}
+            name="email"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <StaxisInput
+                label="Email"
+                placeholder="name@example.com"
+                autoCapitalize="none"
+                autoComplete="email"
+                keyboardType="email-address"
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+                error={errors.email?.message}
+              />
             )}
-          </ThemedView>
+          />
 
-          <ThemedView style={styles.field}>
-            <ThemedText type="smallBold">Password</ThemedText>
-            <Controller
-              control={control}
-              name="password"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <ThemedTextInput
-                  placeholder="••••••••"
-                  secureTextEntry
-                  autoComplete="password"
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  value={value}
-                />
-              )}
-            />
-            {errors.password && (
-              <ThemedText type="small" style={styles.fieldError}>
-                {errors.password.message}
-              </ThemedText>
+          <Controller
+            control={control}
+            name="password"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <StaxisInput
+                label="Password"
+                placeholder="Enter your password"
+                secureTextEntry
+                autoComplete="password"
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+                error={errors.password?.message}
+              />
             )}
-          </ThemedView>
+          />
 
           <Link href="/(auth)/forgot-password" style={styles.forgotLink}>
-            <ThemedText type="link" themeColor="textSecondary">
-              Forgot password?
-            </ThemedText>
+            <StaxisText variant="cardLink">Forgot password?</StaxisText>
           </Link>
 
           {submitError && (
-            <ThemedText type="small" style={styles.fieldError}>
+            <StaxisText variant="formHint" style={{ color: Palette.signal }}>
               {submitError}
-            </ThemedText>
+            </StaxisText>
           )}
 
-          <Pressable
-            style={[styles.button, loading && styles.buttonDisabled]}
+          <StaxisButton
+            label={loading ? '' : 'Sign in'}
             onPress={handleSubmit(onSubmit)}
-            disabled={loading}>
-            {loading ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <ThemedText type="smallBold" style={styles.buttonText}>
-                Sign in
-              </ThemedText>
-            )}
-          </Pressable>
+            disabled={loading}
+            block
+            icon={loading ? <ActivityIndicator color={Palette.bone} /> : undefined}
+          />
 
-          <ThemedView style={styles.linkRow}>
-            <ThemedText type="link" themeColor="textSecondary">
+          <View style={styles.linkRow}>
+            <StaxisText variant="bodySm">
               Don&apos;t have an account?{' '}
-            </ThemedText>
+            </StaxisText>
             <Link href="/(auth)/register">
-              <ThemedText type="linkPrimary">Sign up</ThemedText>
+              <StaxisText variant="cardAction">Sign up</StaxisText>
             </Link>
-          </ThemedView>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  flex: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: Colors.bgApp },
+  flex: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.three,
-    alignSelf: 'center',
-    width: '100%',
-    maxWidth: MaxContentWidth,
+    paddingHorizontal: Spacing.xxl,
+    gap: Spacing.sm,
   },
-  title: {
-    marginBottom: -Spacing.two,
-  },
-  forgotLink: {
-    alignSelf: 'flex-end',
-  },
-  field: {
-    gap: Spacing.one,
-  },
-  fieldError: {
-    color: '#e5484d',
-  },
-  button: {
+  brandMark: {
+    width: 48,
     height: 48,
-    borderRadius: 12,
-    backgroundColor: '#208AEF',
+    borderRadius: Radius.sm,
+    backgroundColor: Palette.signal,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: Spacing.two,
+    marginBottom: Spacing.lg,
   },
-  buttonDisabled: {
-    opacity: 0.6,
+  brandLetter: {
+    fontFamily: FontFamily.monoMedium,
+    color: Palette.bone,
+    fontSize: 20,
+    letterSpacing: -0.6,
   },
-  buttonText: {
-    color: '#ffffff',
-  },
+  title: { color: Colors.text },
+  subtitle: { marginBottom: Spacing.lg },
+  forgotLink: { alignSelf: 'flex-end', marginTop: -Spacing.sm },
   linkRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: Spacing.two,
+    marginTop: Spacing.lg,
   },
 });

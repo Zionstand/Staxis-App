@@ -2,7 +2,6 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Linking,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -11,30 +10,22 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Badge } from '@/components/ui/badge';
-import { ProgressBar } from '@/components/ui/progress-bar';
-import { StatCard } from '@/components/ui/stat-card';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import {
+  Banner,
+  EmptyState,
+  MetricCard,
+  PageHeader,
+  StaxisButton,
+  StaxisCard,
+  StaxisTag,
+  StaxisText,
+} from '@/components/staxis';
+import { Colors, Palette, Spacing } from '@/constants/staxis-theme';
 import { fetchData, postData } from '@/lib/api';
 import { tokenStorage } from '@/lib/token-storage';
 import { DashboardData } from '@/lib/types';
-import { daysUntil, fmtDate, greeting } from '@/lib/utils';
+import { daysUntil, fmtDate, fmtNaira, greeting } from '@/lib/utils';
 import { useAuth } from '@/store/use-auth';
-
-const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
-  ACTIVE: { bg: '#dcfce7', color: '#15803d' },
-  TRIAL: { bg: '#fef3c7', color: '#b45309' },
-  PAST_DUE: { bg: '#ffe4e6', color: '#be123c' },
-  CANCELLED: { bg: '#f1f5f9', color: '#64748b' },
-};
-
-const POSITION_LABELS: Record<string, string> = {
-  SUPER_ADMIN: 'Super Admin',
-  ADMIN: 'IT Admin',
-  MODERATOR: 'Moderator',
-};
 
 export default function HomeScreen() {
   const user = useAuth((s) => s.user);
@@ -58,7 +49,6 @@ export default function HomeScreen() {
     }
   }, []);
 
-  // Reload whenever the Home tab regains focus so the dashboard stays fresh.
   useFocusEffect(
     useCallback(() => {
       load();
@@ -75,7 +65,7 @@ export default function HomeScreen() {
     try {
       await postData('/auth/logout', { refreshToken });
     } catch {
-      // Ignore — clear local session regardless of server response.
+      /* clear local session regardless */
     }
     await tokenStorage.clear();
     clearUser();
@@ -84,55 +74,36 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <ThemedView style={styles.centered}>
-        <ActivityIndicator />
-      </ThemedView>
+      <View style={styles.centered}>
+        <ActivityIndicator color={Palette.signal} />
+      </View>
     );
   }
 
   if (error && !data) {
     return (
-      <ThemedView style={styles.centered}>
-        <ThemedText type="default" themeColor="textSecondary">
-          Couldn&apos;t load your dashboard.
-        </ThemedText>
-        <Pressable onPress={load}>
-          <ThemedText type="linkPrimary">Try again</ThemedText>
-        </Pressable>
-      </ThemedView>
+      <View style={styles.centered}>
+        <EmptyState
+          title="Couldn't load dashboard"
+          message="Pull down to try again, or check your connection."
+          action={{ label: 'Retry', onPress: load }}
+        />
+      </View>
     );
   }
 
   const company = data?.company;
   const plans = company?.plans ?? [];
-  const planLabel = plans.map((p) => p.name).join(' + ') || 'No plan selected';
-  const amount = company?.amount ?? 0;
+  const planLabel = plans.map((p) => p.name).join(' + ') || 'No plan';
   const status = company?.status ?? 'ACTIVE';
-  const paymentVerified = company?.paymentVerified ?? false;
   const isTrial = status === 'TRIAL';
   const isPastDue = status === 'PAST_DUE';
-  const managers = data?.managers ?? [];
-  const primaryManager = managers[0] ?? null;
-  const statusStyle = STATUS_STYLES[status] ?? STATUS_STYLES.ACTIVE;
-
-  const nextBillingDate = company?.nextBilling ?? null;
-  const daysToRenewal = nextBillingDate ? daysUntil(nextBillingDate) : null;
-  const renewalProgress =
-    nextBillingDate && daysToRenewal !== null
-      ? Math.max(0, Math.min(100, ((30 - daysToRenewal) / 30) * 100))
-      : 0;
 
   const trialEndsAt = company?.trialEndsAt ?? null;
   const trialDaysLeft = trialEndsAt ? daysUntil(trialEndsAt) : 0;
-  const trialProgress = trialEndsAt
-    ? Math.max(0, Math.min(100, ((14 - trialDaysLeft) / 14) * 100))
-    : 0;
 
-  const renewalSub = isTrial
-    ? `Trial ends ${trialEndsAt ? fmtDate(trialEndsAt) : '—'}`
-    : paymentVerified && nextBillingDate
-      ? `Renews ${fmtDate(nextBillingDate)}`
-      : 'Payment pending';
+  const primaryManager = (data?.managers ?? [])[0] ?? null;
+  const openTickets = data?.openTicketsCount ?? 0;
 
   const memberSince = company?.createdAt
     ? new Date(company.createdAt).toLocaleDateString('en-GB', {
@@ -141,222 +112,204 @@ export default function HomeScreen() {
       })
     : null;
 
-  const openTickets = data?.openTicketsCount ?? 0;
-  const resolvedTickets = data?.resolvedTicketsCount ?? 0;
-  const totalSpent = data?.totalSpent ?? 0;
-
   return (
     <ScrollView
-      style={styles.scrollView}
-      contentContainerStyle={styles.contentContainer}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <View style={styles.header}>
-          <View style={styles.row}>
-            <ThemedText type="subtitle">
-              {user ? greeting(user.firstName) : 'Welcome back'}
-            </ThemedText>
-            <Pressable onPress={handleSignOut}>
-              <ThemedText type="link" themeColor="textSecondary">
-                Sign out
-              </ThemedText>
+      style={styles.scroll}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      <SafeAreaView edges={['top']} style={styles.safe}>
+        {/* ── Header ── */}
+        <PageHeader
+          title={user ? greeting(user.firstName) : 'Welcome back'}
+          subtitle={
+            company
+              ? `${company.name}${memberSince ? ` · Since ${memberSince}` : ''}`
+              : undefined
+          }
+          right={
+            <Pressable onPress={handleSignOut} hitSlop={8}>
+              <StaxisText variant="refreshBtn">Sign out</StaxisText>
             </Pressable>
-          </View>
-          {company && (
-            <ThemedText type="small" themeColor="textSecondary">
-              {company.name}
-              {memberSince ? ` · Member since ${memberSince}` : ''}
-            </ThemedText>
-          )}
-          <Badge label={status} bg={statusStyle.bg} color={statusStyle.color} />
+          }
+        />
+
+        {/* ── Status tag ── */}
+        <View style={styles.tagRow}>
+          <StaxisTag
+            variant={
+              isPastDue ? 'danger' : isTrial ? 'warn' : 'success'
+            }
+            label={status.replace('_', ' ')}
+          />
         </View>
 
+        {/* ── Banners ── */}
         {isTrial && (
-          <ThemedView style={[styles.banner, styles.trialBanner]}>
-            <ThemedText type="smallBold" style={styles.trialTitle}>
-              ⏳ Free trial — {trialDaysLeft} day{trialDaysLeft !== 1 ? 's' : ''} remaining
-            </ThemedText>
-            <ThemedText type="small" style={styles.trialText}>
-              Expires {trialEndsAt ? fmtDate(trialEndsAt) : '—'}. Upgrade to keep full access.
-            </ThemedText>
-            <ProgressBar value={trialProgress} fillColor="#f59e0b" trackColor="#fde68a" />
-          </ThemedView>
+          <Banner
+            variant="warn"
+            title={`Trial — ${trialDaysLeft} day${trialDaysLeft !== 1 ? 's' : ''} left`}
+            message={`Expires ${trialEndsAt ? fmtDate(trialEndsAt) : '—'}. Upgrade to keep access.`}
+            action="Upgrade"
+            onAction={() => router.push('/(tabs)/billing')}
+          />
         )}
 
         {isPastDue && (
-          <ThemedView style={[styles.banner, styles.pastDueBanner]}>
-            <ThemedText type="smallBold" style={styles.pastDueTitle}>
-              ⚠️ Payment overdue
-            </ThemedText>
-            <ThemedText type="small" style={styles.pastDueText}>
-              Your subscription is past due. Update your payment to restore full access.
-            </ThemedText>
-          </ThemedView>
+          <Banner
+            variant="danger"
+            title="Payment overdue"
+            message="Update your payment to restore full access."
+            action="Pay now"
+            onAction={() => router.push('/(tabs)/billing')}
+          />
         )}
 
-        <Pressable
-          onPress={() => router.push('/(tabs)/billing')}
-          style={({ pressed }) => pressed && styles.pressed}>
-          <StatCard label="Active Plan" title={planLabel} sub={renewalSub}>
-            {(isTrial || (paymentVerified && daysToRenewal !== null)) && (
-              <>
-                <View style={styles.row}>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {isTrial ? 'Trial usage' : 'Billing cycle'}
-                  </ThemedText>
-                  <ThemedText type="smallBold">
-                    {isTrial ? `${trialDaysLeft}d left` : `${daysToRenewal}d left`}
-                  </ThemedText>
-                </View>
-                <ProgressBar value={isTrial ? trialProgress : renewalProgress} />
-              </>
-            )}
-            <View style={styles.row}>
-              <Badge label={status} bg={statusStyle.bg} color={statusStyle.color} />
-              {paymentVerified ? (
-                <Badge label="PAID" bg="#dbeafe" color="#1d4ed8" />
-              ) : (
-                <Badge label="UNPAID" bg="#fef3c7" color="#b45309" />
-              )}
-            </View>
-          </StatCard>
-        </Pressable>
+        {/* ── Quick actions ── */}
+        <View style={styles.actions}>
+          <StaxisButton
+            label="Open a Ticket"
+            onPress={() => router.push('/(tabs)/tickets/new')}
+          />
+          <StaxisButton
+            variant="ghost"
+            label="Billing"
+            onPress={() => router.push('/(tabs)/billing')}
+          />
+        </View>
 
-        <Pressable
-          onPress={() => router.push('/(tabs)/tickets')}
-          style={({ pressed }) => pressed && styles.pressed}>
-          <StatCard
+        {/* ── Key metrics (2×2 grid) ── */}
+        <View style={styles.grid}>
+          <MetricCard
+            label="Active Plan"
+            value={planLabel}
+            footer={
+              isTrial
+                ? `Trial ends ${trialEndsAt ? fmtDate(trialEndsAt) : '—'}`
+                : company?.paymentVerified
+                  ? `Renews ${company.nextBilling ? fmtDate(company.nextBilling) : '—'}`
+                  : 'Payment pending'
+            }
+            trend={isPastDue || !company?.paymentVerified ? 'warn' : undefined}
+            onPress={() => router.push('/(tabs)/billing')}
+          />
+
+          <MetricCard
             label="Support Tickets"
-            title={String(openTickets)}
-            sub={openTickets > 0 ? 'Awaiting resolution' : 'No open tickets'}>
-            <View style={styles.row}>
-              <ThemedText type="small" themeColor="textSecondary">
-                ✓ {resolvedTickets} resolved
-              </ThemedText>
-              <ThemedText type="link" themeColor="textSecondary">
-                View all ›
-              </ThemedText>
-            </View>
-          </StatCard>
-        </Pressable>
+            value={String(openTickets)}
+            footer={
+              openTickets > 0
+                ? 'Tap to view'
+                : 'No open tickets'
+            }
+            onPress={() => router.push('/(tabs)/tickets')}
+          />
 
-        <Pressable
-          onPress={() => router.push('/(tabs)/billing')}
-          style={({ pressed }) => pressed && styles.pressed}>
-          <StatCard
+          <MetricCard
             label="Monthly Spend"
-            title={amount > 0 ? `₦${amount.toLocaleString()}/mo` : 'No subscription'}
-            sub={
+            value={
+              (company?.amount ?? 0) > 0
+                ? `${fmtNaira(company!.amount)}/mo`
+                : '—'
+            }
+            footer={
               company?.bundleDiscount && company.bundleDiscount > 0
-                ? `Bundle savings: ₦${company.bundleDiscount.toLocaleString()}/mo`
-                : 'Standard pricing'
-            }>
-            <View style={styles.row}>
-              <ThemedText type="small" themeColor="textSecondary">
-                Total spent (lifetime)
-              </ThemedText>
-              <ThemedText type="smallBold">₦{totalSpent.toLocaleString()}</ThemedText>
-            </View>
-            <ProgressBar value={99.9} fillColor="#94a3b8" trackColor="#e2e8f0" />
-            <ThemedText type="small" themeColor="textSecondary">
-              99.9% uptime guarantee
-            </ThemedText>
-          </StatCard>
-        </Pressable>
+                ? `Saving ${fmtNaira(company.bundleDiscount)}/mo`
+                : undefined
+            }
+            trend={
+              company?.bundleDiscount && company.bundleDiscount > 0
+                ? 'up'
+                : undefined
+            }
+            onPress={() => router.push('/(tabs)/billing')}
+          />
 
-        <StatCard
-          label="Your IT Manager"
-          title={
-            primaryManager
-              ? `${primaryManager.firstName} ${primaryManager.lastName}`
-              : 'Not yet assigned'
-          }
-          sub={
-            primaryManager
-              ? (POSITION_LABELS[primaryManager.position] ?? primaryManager.position)
-              : 'Our team will assign one soon'
-          }>
-          {primaryManager && (
-            <>
-              <Pressable onPress={() => Linking.openURL(`mailto:${primaryManager.email}`)}>
-                <ThemedText type="link" themeColor="textSecondary" numberOfLines={1}>
-                  {primaryManager.email}
-                </ThemedText>
-              </Pressable>
-              {managers.length > 1 && (
-                <ThemedText type="small" themeColor="textSecondary">
-                  +{managers.length - 1} more manager{managers.length > 2 ? 's' : ''} assigned
-                </ThemedText>
+          <MetricCard
+            label="IT Manager"
+            value={
+              primaryManager
+                ? `${primaryManager.firstName} ${primaryManager.lastName.charAt(0)}.`
+                : 'Unassigned'
+            }
+            footer={
+              primaryManager
+                ? primaryManager.email
+                : 'Will be assigned soon'
+            }
+          />
+        </View>
+
+        {/* ── Recent activity teaser ── */}
+        <StaxisCard title="Recent Activity" subtitle="Latest updates">
+          {(data?.transactions ?? []).length === 0 && openTickets === 0 ? (
+            <EmptyState
+              title="All quiet"
+              message="Your recent activity will show up here."
+            />
+          ) : (
+            <View style={styles.activityList}>
+              {openTickets > 0 && (
+                <Pressable
+                  onPress={() => router.push('/(tabs)/tickets')}
+                  style={styles.activityRow}
+                >
+                  <StaxisText variant="listTitle">
+                    {openTickets} open ticket{openTickets !== 1 ? 's' : ''}
+                  </StaxisText>
+                  <StaxisText variant="cardAction">View</StaxisText>
+                </Pressable>
               )}
-            </>
+              {(data?.resolvedTicketsCount ?? 0) > 0 && (
+                <View style={styles.activityRow}>
+                  <StaxisText variant="listTitle" style={{ color: Palette.success }}>
+                    {data!.resolvedTicketsCount} resolved
+                  </StaxisText>
+                </View>
+              )}
+            </View>
           )}
-        </StatCard>
+        </StaxisCard>
       </SafeAreaView>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollView: {
+  scroll: { flex: 1, backgroundColor: Colors.bgApp },
+  content: { flexGrow: 1 },
+  safe: {
     flex: 1,
-  },
-  contentContainer: {
-    flexGrow: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.xxxl,
+    gap: Spacing.lg,
   },
   centered: {
     flex: 1,
+    backgroundColor: Colors.bgApp,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.two,
   },
-  safeArea: {
-    flex: 1,
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    gap: Spacing.three,
+  tagRow: { flexDirection: 'row', marginTop: -Spacing.sm },
+  actions: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
   },
-  header: {
-    gap: Spacing.one,
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.md,
   },
-  row: {
+  activityList: { gap: Spacing.sm },
+  activityRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: Spacing.two,
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-  banner: {
-    borderRadius: Spacing.three,
-    padding: Spacing.three,
-    gap: Spacing.one,
-  },
-  trialBanner: {
-    backgroundColor: '#fffbeb',
-    borderWidth: 1,
-    borderColor: '#fde68a',
-  },
-  trialTitle: {
-    color: '#92400e',
-  },
-  trialText: {
-    color: '#b45309',
-  },
-  pastDueBanner: {
-    backgroundColor: '#fff1f2',
-    borderWidth: 1,
-    borderColor: '#fecdd3',
-  },
-  pastDueTitle: {
-    color: '#9f1239',
-  },
-  pastDueText: {
-    color: '#be123c',
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.line,
   },
 });

@@ -1,3 +1,4 @@
+import { Palette } from '@/constants/staxis-theme';
 import {
   TicketCategory,
   TicketPriority,
@@ -7,18 +8,18 @@ import {
 type BadgeStyle = { bg: string; color: string };
 
 export const TICKET_STATUS_STYLES: Record<TicketStatus, BadgeStyle> = {
-  OPEN: { bg: '#dbeafe', color: '#1d4ed8' },
-  IN_PROGRESS: { bg: '#fef3c7', color: '#b45309' },
-  ON_HOLD: { bg: '#f1f5f9', color: '#64748b' },
-  RESOLVED: { bg: '#dcfce7', color: '#15803d' },
-  CLOSED: { bg: '#e2e8f0', color: '#475569' },
+  OPEN: { bg: Palette.infoTint, color: Palette.info },
+  IN_PROGRESS: { bg: Palette.warnTint, color: Palette.warn },
+  ON_HOLD: { bg: Palette.bone2, color: 'rgba(10,10,15,0.65)' },
+  RESOLVED: { bg: Palette.successTint, color: Palette.success },
+  CLOSED: { bg: Palette.ash, color: 'rgba(10,10,15,0.48)' },
 };
 
 export const TICKET_PRIORITY_STYLES: Record<TicketPriority, BadgeStyle> = {
-  LOW: { bg: '#f1f5f9', color: '#64748b' },
-  MEDIUM: { bg: '#dbeafe', color: '#1d4ed8' },
-  HIGH: { bg: '#fef3c7', color: '#b45309' },
-  URGENT: { bg: '#ffe4e6', color: '#be123c' },
+  LOW: { bg: Palette.bone2, color: 'rgba(10,10,15,0.65)' },
+  MEDIUM: { bg: Palette.infoTint, color: Palette.info },
+  HIGH: { bg: Palette.warnTint, color: Palette.warn },
+  URGENT: { bg: Palette.signalTint, color: Palette.signal },
 };
 
 export const TICKET_STATUS_LABELS: Record<TicketStatus, string> = {
