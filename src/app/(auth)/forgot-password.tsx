@@ -4,14 +4,12 @@ import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
 
-import { StaxisButton, StaxisInput, StaxisText } from '@/components/staxis';
+import { StaxisButton, StaxisInput, StaxisLogo, StaxisText } from '@/components/staxis';
 import { Colors, Palette, Spacing } from '@/constants/staxis-theme';
 import { postData } from '@/lib/api';
 import {
@@ -52,16 +50,16 @@ export default function ForgotPasswordScreen() {
 
   return (
     <View style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          <StaxisText variant="displaySm" style={{ color: Colors.text }}>
-            Reset password
+        <StaxisLogo variant="red" size={40} />
+
+        <StaxisText variant="displaySm" style={{ color: Colors.text }}>
+          Reset password
           </StaxisText>
           <StaxisText variant="bodySm" style={styles.subtitle}>
             Enter your email and we&apos;ll send you a verification code.
@@ -108,14 +106,12 @@ export default function ForgotPasswordScreen() {
             </Link>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgApp },
-  flex: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',

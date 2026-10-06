@@ -10,3 +10,4 @@ export { ListItem, type ListItemProps } from './ListItem';
 export { SectionLabel, type SectionLabelProps } from './SectionLabel';
 export { PageHeader, type PageHeaderProps } from './PageHeader';
 export { ProgressBar, type ProgressBarProps } from './ProgressBar';
+export { StaxisLogo, type StaxisLogoProps } from './StaxisLogo';

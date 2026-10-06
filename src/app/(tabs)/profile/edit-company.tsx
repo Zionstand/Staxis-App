@@ -4,8 +4,6 @@ import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StyleSheet,
   View,
@@ -145,13 +143,11 @@ export default function EditCompanyScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.scrollContent}
+      keyboardDismissMode="interactive"
+      automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
       >
         {FIELDS.map((f) => (
@@ -188,7 +184,6 @@ export default function EditCompanyScreen() {
           icon={loading ? <ActivityIndicator color={Palette.bone} /> : undefined}
         />
       </ScrollView>
-    </KeyboardAvoidingView>
   );
 }
 

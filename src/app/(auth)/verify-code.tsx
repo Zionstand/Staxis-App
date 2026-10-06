@@ -4,15 +4,13 @@ import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
 
-import { StaxisButton, StaxisInput, StaxisText } from '@/components/staxis';
+import { StaxisButton, StaxisInput, StaxisLogo, StaxisText } from '@/components/staxis';
 import { Colors, FontFamily, Palette, Spacing } from '@/constants/staxis-theme';
 import { postData } from '@/lib/api';
 import { maskEmail } from '@/lib/utils';
@@ -80,16 +78,16 @@ export default function VerifyCodeScreen() {
 
   return (
     <View style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          <StaxisText variant="displaySm" style={{ color: Colors.text }}>
-            Verify code
+        <StaxisLogo variant="red" size={40} />
+
+        <StaxisText variant="displaySm" style={{ color: Colors.text }}>
+          Verify code
           </StaxisText>
           <StaxisText variant="bodySm" style={styles.subtitle}>
             We&apos;ve sent a 6-digit code to {maskEmail(email ?? '')}
@@ -148,14 +146,12 @@ export default function VerifyCodeScreen() {
             </Pressable>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgApp },
-  flex: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',

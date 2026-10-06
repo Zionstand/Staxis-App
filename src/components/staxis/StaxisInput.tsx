@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import {
+  Pressable,
   StyleSheet,
   TextInput,
   type TextInputProps,
   View,
 } from 'react-native';
+import { Eye, EyeClosed } from 'iconoir-react-native';
 
 import {
   Colors,
@@ -28,10 +30,14 @@ export function StaxisInput({
   hint,
   required,
   error,
+  secureTextEntry,
   style,
   ...rest
 }: StaxisInputProps) {
   const [focused, setFocused] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const isSecure = !!secureTextEntry;
 
   return (
     <View style={styles.group}>
@@ -45,24 +51,41 @@ export function StaxisInput({
           )}
         </StaxisText>
       )}
-      <TextInput
-        style={[
-          styles.input,
-          focused && styles.inputFocused,
-          error && styles.inputError,
-          style,
-        ]}
-        placeholderTextColor={Colors.text3}
-        onFocus={(e) => {
-          setFocused(true);
-          rest.onFocus?.(e);
-        }}
-        onBlur={(e) => {
-          setFocused(false);
-          rest.onBlur?.(e);
-        }}
-        {...rest}
-      />
+      <View>
+        <TextInput
+          style={[
+            styles.input,
+            isSecure && styles.inputWithEye,
+            focused && styles.inputFocused,
+            error && styles.inputError,
+            style,
+          ]}
+          placeholderTextColor={Colors.text3}
+          secureTextEntry={isSecure && !showPassword}
+          onFocus={(e) => {
+            setFocused(true);
+            rest.onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            rest.onBlur?.(e);
+          }}
+          {...rest}
+        />
+        {isSecure && (
+          <Pressable
+            onPress={() => setShowPassword((v) => !v)}
+            style={styles.eyeButton}
+            hitSlop={8}
+          >
+            {showPassword ? (
+              <Eye width={20} height={20} color={Palette.signal} strokeWidth={1.6} />
+            ) : (
+              <EyeClosed width={20} height={20} color={Colors.text3} strokeWidth={1.6} />
+            )}
+          </Pressable>
+        )}
+      </View>
       {error && (
         <StaxisText variant="formHint" style={{ color: Palette.signal, marginTop: FormSize.hint.marginTop }}>
           {error}
@@ -89,10 +112,14 @@ const styles = StyleSheet.create({
     borderRadius: Radius.sm,
     backgroundColor: Colors.bgCard,
   },
-  inputFocused: {
-    borderColor: Palette.signal,
-  },
-  inputError: {
-    borderColor: Palette.signal,
+  inputWithEye: { paddingRight: 44 },
+  inputFocused: { borderColor: Palette.signal },
+  inputError: { borderColor: Palette.signal },
+  eyeButton: {
+    position: 'absolute',
+    right: 12,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
   },
 });

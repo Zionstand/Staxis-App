@@ -4,15 +4,13 @@ import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StyleSheet,
   Switch,
   View,
 } from 'react-native';
 
-import { StaxisButton, StaxisInput, StaxisText } from '@/components/staxis';
+import { StaxisButton, StaxisInput, StaxisLogo, StaxisText } from '@/components/staxis';
 import { Colors, Palette, Spacing } from '@/constants/staxis-theme';
 import { postData } from '@/lib/api';
 import { tokenStorage } from '@/lib/token-storage';
@@ -66,15 +64,15 @@ export default function RegisterScreen() {
 
   return (
     <View style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          <StaxisText variant="displaySm" style={{ color: Colors.text }}>
+        <StaxisLogo variant="red" size={40} />
+
+        <StaxisText variant="displaySm" style={{ color: Colors.text }}>
             Create an account
           </StaxisText>
           <StaxisText variant="bodySm" style={styles.subtitle}>
@@ -232,7 +230,6 @@ export default function RegisterScreen() {
             </Link>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
     </View>
   );
 }

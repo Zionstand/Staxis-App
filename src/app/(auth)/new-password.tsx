@@ -4,15 +4,12 @@ import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
 
-import { StaxisButton, StaxisText } from '@/components/staxis';
-import { StaxisInput } from '@/components/staxis';
+import { StaxisButton, StaxisInput, StaxisLogo, StaxisText } from '@/components/staxis';
 import { Colors, Palette, Spacing } from '@/constants/staxis-theme';
 import { postData } from '@/lib/api';
 import { maskEmail } from '@/lib/utils';
@@ -53,6 +50,8 @@ export default function NewPasswordScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.scrollContent}>
+          <StaxisLogo variant="red" size={40} />
+
           <StaxisText variant="displaySm" style={{ color: Colors.text }}>
             Password updated
           </StaxisText>
@@ -72,16 +71,16 @@ export default function NewPasswordScreen() {
 
   return (
     <View style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          <StaxisText variant="displaySm" style={{ color: Colors.text }}>
-            Set new password
+        <StaxisLogo variant="red" size={40} />
+
+        <StaxisText variant="displaySm" style={{ color: Colors.text }}>
+          Set new password
           </StaxisText>
           <StaxisText variant="bodySm" style={styles.subtitle}>
             Create a new password for {maskEmail(email ?? '')}
@@ -135,14 +134,12 @@ export default function NewPasswordScreen() {
             icon={loading ? <ActivityIndicator color={Palette.bone} /> : undefined}
           />
         </ScrollView>
-      </KeyboardAvoidingView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgApp },
-  flex: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
