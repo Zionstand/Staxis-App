@@ -5,6 +5,8 @@ import { Controller, useForm } from 'react-hook-form';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   View,
@@ -50,12 +52,15 @@ export default function ChangePasswordScreen() {
   };
 
   return (
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
     <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.scrollContent}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
-      automaticallyAdjustKeyboardInsets
     >
         <StaxisText variant="formHint">
           Choose a strong password you don&apos;t use anywhere else.
@@ -126,6 +131,7 @@ export default function ChangePasswordScreen() {
           icon={loading ? <ActivityIndicator color={Palette.bone} /> : undefined}
         />
       </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

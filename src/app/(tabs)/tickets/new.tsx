@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -93,12 +95,15 @@ export default function NewTicketScreen() {
   };
 
   return (
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
     <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.scrollContent}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
-      automaticallyAdjustKeyboardInsets
     >
         <Controller
           control={control}
@@ -185,6 +190,7 @@ export default function NewTicketScreen() {
           icon={loading ? <ActivityIndicator color={Palette.bone} /> : undefined}
         />
       </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   View,
@@ -49,7 +51,7 @@ export default function NewPasswordScreen() {
   if (success) {
     return (
       <View style={styles.container}>
-        <View style={styles.scrollContent}>
+        <View style={styles.successInner}>
           <StaxisLogo variant="red" size={40} />
 
           <StaxisText variant="displaySm" style={{ color: Colors.text }}>
@@ -71,77 +73,93 @@ export default function NewPasswordScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        automaticallyAdjustKeyboardInsets
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <StaxisLogo variant="red" size={40} />
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+        >
+          <View style={styles.inner}>
+            <StaxisLogo variant="red" size={40} />
 
-        <StaxisText variant="displaySm" style={{ color: Colors.text }}>
-          Set new password
-          </StaxisText>
-          <StaxisText variant="bodySm" style={styles.subtitle}>
-            Create a new password for {maskEmail(email ?? '')}
-          </StaxisText>
-
-          <Controller
-            control={control}
-            name="newPassword"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <StaxisInput
-                label="New password"
-                placeholder="Enter new password"
-                secureTextEntry
-                autoComplete="password-new"
-                onBlur={onBlur}
-                onChangeText={onChange}
-                value={value}
-                error={errors.newPassword?.message}
-              />
-            )}
-          />
-
-          <Controller
-            control={control}
-            name="confirmPassword"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <StaxisInput
-                label="Confirm password"
-                placeholder="Re-enter new password"
-                secureTextEntry
-                autoComplete="password-new"
-                onBlur={onBlur}
-                onChangeText={onChange}
-                value={value}
-                error={errors.confirmPassword?.message}
-              />
-            )}
-          />
-
-          {submitError && (
-            <StaxisText variant="formHint" style={{ color: Palette.signal }}>
-              {submitError}
+            <StaxisText variant="displaySm" style={{ color: Colors.text }}>
+              Set new password
             </StaxisText>
-          )}
+            <StaxisText variant="bodySm" style={styles.subtitle}>
+              Create a new password for {maskEmail(email ?? '')}
+            </StaxisText>
 
-          <StaxisButton
-            label={loading ? '' : 'Update password'}
-            onPress={handleSubmit(onSubmit)}
-            disabled={loading}
-            block
-            icon={loading ? <ActivityIndicator color={Palette.bone} /> : undefined}
-          />
+            <Controller
+              control={control}
+              name="newPassword"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <StaxisInput
+                  label="New password"
+                  placeholder="Enter new password"
+                  secureTextEntry
+                  autoComplete="password-new"
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  value={value}
+                  error={errors.newPassword?.message}
+                />
+              )}
+            />
+
+            <Controller
+              control={control}
+              name="confirmPassword"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <StaxisInput
+                  label="Confirm password"
+                  placeholder="Re-enter new password"
+                  secureTextEntry
+                  autoComplete="password-new"
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  value={value}
+                  error={errors.confirmPassword?.message}
+                />
+              )}
+            />
+
+            {submitError && (
+              <StaxisText variant="formHint" style={{ color: Palette.signal }}>
+                {submitError}
+              </StaxisText>
+            )}
+
+            <StaxisButton
+              label={loading ? '' : 'Update password'}
+              onPress={handleSubmit(onSubmit)}
+              disabled={loading}
+              block
+              icon={loading ? <ActivityIndicator color={Palette.bone} /> : undefined}
+            />
+          </View>
         </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgApp },
+  flex: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
+    paddingHorizontal: Spacing.xxl,
+  },
+  inner: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: Spacing.sm,
+  },
+  successInner: {
+    flex: 1,
     justifyContent: 'center',
     paddingHorizontal: Spacing.xxl,
     gap: Spacing.sm,

@@ -4,13 +4,21 @@ import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
   View,
 } from 'react-native';
 
-import { StaxisButton, StaxisInput, StaxisLogo, StaxisText } from '@/components/staxis';
+import {
+  StaxisButton,
+  StaxisInput,
+  StaxisLogo,
+  StaxisPhoneInput,
+  StaxisText,
+} from '@/components/staxis';
 import { Colors, Palette, Spacing } from '@/constants/staxis-theme';
 import { postData } from '@/lib/api';
 import { tokenStorage } from '@/lib/token-storage';
@@ -64,172 +72,176 @@ export default function RegisterScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        automaticallyAdjustKeyboardInsets
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <StaxisLogo variant="red" size={40} />
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+        >
+          <View style={styles.inner}>
+            <StaxisLogo variant="red" size={40} />
 
-        <StaxisText variant="displaySm" style={{ color: Colors.text }}>
-            Create an account
-          </StaxisText>
-          <StaxisText variant="bodySm" style={styles.subtitle}>
-            Get started with STAXIS
-          </StaxisText>
+            <StaxisText variant="displaySm" style={{ color: Colors.text }}>
+              Create an account
+            </StaxisText>
+            <StaxisText variant="bodySm" style={styles.subtitle}>
+              Get started with STAXIS
+            </StaxisText>
 
-          <View style={styles.nameRow}>
-            <View style={styles.flex}>
-              <Controller
-                control={control}
-                name="firstName"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <StaxisInput
-                    label="First name"
-                    placeholder="Jane"
-                    autoComplete="given-name"
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    value={value}
-                    error={errors.firstName?.message}
-                  />
-                )}
-              />
+            <View style={styles.nameRow}>
+              <View style={styles.flex}>
+                <Controller
+                  control={control}
+                  name="firstName"
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <StaxisInput
+                      label="First name"
+                      placeholder="Jane"
+                      autoComplete="given-name"
+                      onBlur={onBlur}
+                      onChangeText={onChange}
+                      value={value}
+                      error={errors.firstName?.message}
+                    />
+                  )}
+                />
+              </View>
+              <View style={styles.flex}>
+                <Controller
+                  control={control}
+                  name="lastName"
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <StaxisInput
+                      label="Last name"
+                      placeholder="Doe"
+                      autoComplete="family-name"
+                      onBlur={onBlur}
+                      onChangeText={onChange}
+                      value={value}
+                      error={errors.lastName?.message}
+                    />
+                  )}
+                />
+              </View>
             </View>
-            <View style={styles.flex}>
-              <Controller
-                control={control}
-                name="lastName"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <StaxisInput
-                    label="Last name"
-                    placeholder="Doe"
-                    autoComplete="family-name"
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    value={value}
-                    error={errors.lastName?.message}
-                  />
-                )}
-              />
-            </View>
-          </View>
 
-          <Controller
-            control={control}
-            name="email"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <StaxisInput
-                label="Email"
-                placeholder="name@example.com"
-                autoCapitalize="none"
-                autoComplete="email"
-                keyboardType="email-address"
-                onBlur={onBlur}
-                onChangeText={onChange}
-                value={value}
-                error={errors.email?.message}
-              />
-            )}
-          />
-
-          <Controller
-            control={control}
-            name="phoneNumber"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <StaxisInput
-                label="Phone number"
-                placeholder="+2348012345678"
-                autoComplete="tel"
-                keyboardType="phone-pad"
-                onBlur={onBlur}
-                onChangeText={onChange}
-                value={value}
-                error={errors.phoneNumber?.message}
-              />
-            )}
-          />
-
-          <Controller
-            control={control}
-            name="password"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <StaxisInput
-                label="Password"
-                placeholder="Create a strong password"
-                secureTextEntry
-                autoComplete="password-new"
-                onBlur={onBlur}
-                onChangeText={onChange}
-                value={value}
-                error={errors.password?.message}
-              />
-            )}
-          />
-
-          <Controller
-            control={control}
-            name="confirmPassword"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <StaxisInput
-                label="Confirm password"
-                placeholder="Re-enter your password"
-                secureTextEntry
-                autoComplete="password-new"
-                onBlur={onBlur}
-                onChangeText={onChange}
-                value={value}
-                error={errors.confirmPassword?.message}
-              />
-            )}
-          />
-
-          <View style={styles.termsRow}>
             <Controller
               control={control}
-              name="acceptTerms"
-              render={({ field: { onChange, value } }) => (
-                <Switch
-                  value={!!value}
-                  onValueChange={onChange}
-                  trackColor={{ true: Palette.signal }}
+              name="email"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <StaxisInput
+                  label="Email"
+                  placeholder="name@example.com"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  keyboardType="email-address"
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  value={value}
+                  error={errors.email?.message}
                 />
               )}
             />
-            <StaxisText variant="bodySm" style={styles.termsText}>
-              I accept the Terms of Service and Privacy Policy
-            </StaxisText>
-          </View>
-          {errors.acceptTerms && (
-            <StaxisText variant="formHint" style={{ color: Palette.signal }}>
-              {errors.acceptTerms.message}
-            </StaxisText>
-          )}
 
-          {submitError && (
-            <StaxisText variant="formHint" style={{ color: Palette.signal }}>
-              {submitError}
-            </StaxisText>
-          )}
+            <Controller
+              control={control}
+              name="phoneNumber"
+              render={({ field: { onChange, value } }) => (
+                <StaxisPhoneInput
+                  label="Phone number"
+                  value={value}
+                  onChangeText={onChange}
+                  onChangeFormattedText={onChange}
+                  defaultCode="NG"
+                  error={errors.phoneNumber?.message}
+                />
+              )}
+            />
 
-          <StaxisButton
-            label={loading ? '' : 'Create account'}
-            onPress={handleSubmit(onSubmit)}
-            disabled={loading}
-            block
-            icon={loading ? <ActivityIndicator color={Palette.bone} /> : undefined}
-          />
+            <Controller
+              control={control}
+              name="password"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <StaxisInput
+                  label="Password"
+                  placeholder="Create a strong password"
+                  secureTextEntry
+                  autoComplete="password-new"
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  value={value}
+                  error={errors.password?.message}
+                />
+              )}
+            />
 
-          <View style={styles.linkRow}>
-            <StaxisText variant="bodySm">
-              Already have an account?{' '}
-            </StaxisText>
-            <Link href="/(auth)/login">
-              <StaxisText variant="cardAction">Sign in</StaxisText>
-            </Link>
+            <Controller
+              control={control}
+              name="confirmPassword"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <StaxisInput
+                  label="Confirm password"
+                  placeholder="Re-enter your password"
+                  secureTextEntry
+                  autoComplete="password-new"
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  value={value}
+                  error={errors.confirmPassword?.message}
+                />
+              )}
+            />
+
+            <View style={styles.termsRow}>
+              <Controller
+                control={control}
+                name="acceptTerms"
+                render={({ field: { onChange, value } }) => (
+                  <Switch
+                    value={!!value}
+                    onValueChange={onChange}
+                    trackColor={{ true: Palette.signal }}
+                  />
+                )}
+              />
+              <StaxisText variant="bodySm" style={styles.termsText}>
+                I accept the Terms of Service and Privacy Policy
+              </StaxisText>
+            </View>
+            {errors.acceptTerms && (
+              <StaxisText variant="formHint" style={{ color: Palette.signal }}>
+                {errors.acceptTerms.message}
+              </StaxisText>
+            )}
+
+            {submitError && (
+              <StaxisText variant="formHint" style={{ color: Palette.signal }}>
+                {submitError}
+              </StaxisText>
+            )}
+
+            <StaxisButton
+              label={loading ? '' : 'Create account'}
+              onPress={handleSubmit(onSubmit)}
+              disabled={loading}
+              block
+              icon={loading ? <ActivityIndicator color={Palette.bone} /> : undefined}
+            />
+
+            <View style={styles.linkRow}>
+              <StaxisText variant="bodySm">
+                Already have an account?{' '}
+              </StaxisText>
+              <Link href="/(auth)/login">
+                <StaxisText variant="cardAction">Sign in</StaxisText>
+              </Link>
+            </View>
           </View>
         </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -239,9 +251,12 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
     paddingHorizontal: Spacing.xxl,
     paddingVertical: Spacing.xxl,
+  },
+  inner: {
+    flex: 1,
+    justifyContent: 'center',
     gap: Spacing.sm,
   },
   subtitle: { marginBottom: Spacing.lg },

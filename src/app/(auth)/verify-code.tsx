@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -78,84 +80,94 @@ export default function VerifyCodeScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        automaticallyAdjustKeyboardInsets
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <StaxisLogo variant="red" size={40} />
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+        >
+          <View style={styles.inner}>
+            <StaxisLogo variant="red" size={40} />
 
-        <StaxisText variant="displaySm" style={{ color: Colors.text }}>
-          Verify code
-          </StaxisText>
-          <StaxisText variant="bodySm" style={styles.subtitle}>
-            We&apos;ve sent a 6-digit code to {maskEmail(email ?? '')}
-          </StaxisText>
-
-          <Controller
-            control={control}
-            name="otp"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <StaxisInput
-                label="Code"
-                placeholder="000000"
-                keyboardType="number-pad"
-                maxLength={6}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                value={value}
-                error={errors.otp?.message}
-                style={styles.otpInput}
-              />
-            )}
-          />
-
-          {submitError && (
-            <StaxisText variant="formHint" style={{ color: Palette.signal }}>
-              {submitError}
+            <StaxisText variant="displaySm" style={{ color: Colors.text }}>
+              Verify code
             </StaxisText>
-          )}
-
-          <StaxisButton
-            label={loading ? '' : 'Verify code'}
-            onPress={handleSubmit(onSubmit)}
-            disabled={loading}
-            block
-            icon={loading ? <ActivityIndicator color={Palette.bone} /> : undefined}
-          />
-
-          <View style={styles.resendRow}>
-            <StaxisText variant="bodySm">
-              Didn&apos;t receive the code?
+            <StaxisText variant="bodySm" style={styles.subtitle}>
+              We&apos;ve sent a 6-digit code to {maskEmail(email ?? '')}
             </StaxisText>
-            <Pressable
-              onPress={handleResend}
-              disabled={resending || timeLeft > 0}
-            >
-              {resending ? (
-                <ActivityIndicator size="small" color={Palette.signal} />
-              ) : (
-                <StaxisText
-                  variant="cardAction"
-                  style={timeLeft > 0 ? { opacity: 0.5 } : undefined}
-                >
-                  {timeLeft > 0 ? `Resend in ${timeLeft}s` : 'Resend code'}
-                </StaxisText>
+
+            <Controller
+              control={control}
+              name="otp"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <StaxisInput
+                  label="Code"
+                  placeholder="000000"
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  value={value}
+                  error={errors.otp?.message}
+                  style={styles.otpInput}
+                />
               )}
-            </Pressable>
+            />
+
+            {submitError && (
+              <StaxisText variant="formHint" style={{ color: Palette.signal }}>
+                {submitError}
+              </StaxisText>
+            )}
+
+            <StaxisButton
+              label={loading ? '' : 'Verify code'}
+              onPress={handleSubmit(onSubmit)}
+              disabled={loading}
+              block
+              icon={loading ? <ActivityIndicator color={Palette.bone} /> : undefined}
+            />
+
+            <View style={styles.resendRow}>
+              <StaxisText variant="bodySm">
+                Didn&apos;t receive the code?
+              </StaxisText>
+              <Pressable
+                onPress={handleResend}
+                disabled={resending || timeLeft > 0}
+              >
+                {resending ? (
+                  <ActivityIndicator size="small" color={Palette.signal} />
+                ) : (
+                  <StaxisText
+                    variant="cardAction"
+                    style={timeLeft > 0 ? { opacity: 0.5 } : undefined}
+                  >
+                    {timeLeft > 0 ? `Resend in ${timeLeft}s` : 'Resend code'}
+                  </StaxisText>
+                )}
+              </Pressable>
+            </View>
           </View>
         </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgApp },
+  flex: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
     paddingHorizontal: Spacing.xxl,
+  },
+  inner: {
+    flex: 1,
+    justifyContent: 'center',
     gap: Spacing.sm,
   },
   subtitle: { marginBottom: Spacing.lg },

@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   View,
@@ -50,72 +52,82 @@ export default function ForgotPasswordScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        automaticallyAdjustKeyboardInsets
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <StaxisLogo variant="red" size={40} />
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+        >
+          <View style={styles.inner}>
+            <StaxisLogo variant="red" size={40} />
 
-        <StaxisText variant="displaySm" style={{ color: Colors.text }}>
-          Reset password
-          </StaxisText>
-          <StaxisText variant="bodySm" style={styles.subtitle}>
-            Enter your email and we&apos;ll send you a verification code.
-          </StaxisText>
+            <StaxisText variant="displaySm" style={{ color: Colors.text }}>
+              Reset password
+            </StaxisText>
+            <StaxisText variant="bodySm" style={styles.subtitle}>
+              Enter your email and we&apos;ll send you a verification code.
+            </StaxisText>
 
-          <Controller
-            control={control}
-            name="email"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <StaxisInput
-                label="Email"
-                placeholder="name@example.com"
-                autoCapitalize="none"
-                autoComplete="email"
-                keyboardType="email-address"
-                onBlur={onBlur}
-                onChangeText={onChange}
-                value={value}
-                error={errors.email?.message}
-              />
+            <Controller
+              control={control}
+              name="email"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <StaxisInput
+                  label="Email"
+                  placeholder="name@example.com"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  keyboardType="email-address"
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  value={value}
+                  error={errors.email?.message}
+                />
+              )}
+            />
+
+            {submitError && (
+              <StaxisText variant="formHint" style={{ color: Palette.signal }}>
+                {submitError}
+              </StaxisText>
             )}
-          />
 
-          {submitError && (
-            <StaxisText variant="formHint" style={{ color: Palette.signal }}>
-              {submitError}
-            </StaxisText>
-          )}
+            <StaxisButton
+              label={loading ? '' : 'Send code'}
+              onPress={handleSubmit(onSubmit)}
+              disabled={loading}
+              block
+              icon={loading ? <ActivityIndicator color={Palette.bone} /> : undefined}
+            />
 
-          <StaxisButton
-            label={loading ? '' : 'Send code'}
-            onPress={handleSubmit(onSubmit)}
-            disabled={loading}
-            block
-            icon={loading ? <ActivityIndicator color={Palette.bone} /> : undefined}
-          />
-
-          <View style={styles.linkRow}>
-            <StaxisText variant="bodySm">
-              Remember your password?{' '}
-            </StaxisText>
-            <Link href="/(auth)/login">
-              <StaxisText variant="cardAction">Sign in</StaxisText>
-            </Link>
+            <View style={styles.linkRow}>
+              <StaxisText variant="bodySm">
+                Remember your password?{' '}
+              </StaxisText>
+              <Link href="/(auth)/login">
+                <StaxisText variant="cardAction">Sign in</StaxisText>
+              </Link>
+            </View>
           </View>
         </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgApp },
+  flex: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
     paddingHorizontal: Spacing.xxl,
+  },
+  inner: {
+    flex: 1,
+    justifyContent: 'center',
     gap: Spacing.sm,
   },
   subtitle: { marginBottom: Spacing.lg },
