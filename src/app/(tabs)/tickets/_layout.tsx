@@ -1,21 +1,21 @@
 import { Stack } from 'expo-router';
 
-import { useTheme } from '@/hooks/use-theme';
+import { Colors, FontFamily } from '@/constants/staxis-theme';
 
 export default function TicketsLayout() {
-  const theme = useTheme();
-
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: theme.background },
-        headerTintColor: theme.text,
+        headerStyle: { backgroundColor: Colors.bgApp },
+        headerTintColor: Colors.text,
         headerShadowVisible: false,
-        contentStyle: { backgroundColor: theme.background },
-      }}>
+        headerTitleStyle: { fontFamily: FontFamily.bodySemiBold, fontSize: 16 },
+        contentStyle: { backgroundColor: Colors.bgApp },
+      }}
+    >
       <Stack.Screen name="index" options={{ title: 'Support' }} />
       <Stack.Screen name="[id]" options={{ title: 'Ticket' }} />
-      <Stack.Screen name="new" options={{ title: 'New Ticket' }} />
+      <Stack.Screen name="new" options={{ title: 'New request' }} />
     </Stack>
   );
 }

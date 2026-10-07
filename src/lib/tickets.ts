@@ -44,7 +44,6 @@ export const TICKET_PRIORITY_LABELS: Record<TicketPriority, string> = {
   URGENT: 'Urgent',
 };
 
-/** Tabs shown on the list screen. `value` undefined means "no filter". */
 export const STATUS_FILTERS: { label: string; value?: TicketStatus }[] = [
   { label: 'All' },
   { label: 'Open', value: 'OPEN' },
@@ -61,12 +60,53 @@ export const CATEGORY_OPTIONS: TicketCategory[] = [
   'FEATURE_REQUEST',
 ];
 
+export const TICKET_TOPICS: {
+  value: TicketCategory;
+  title: string;
+  hint: string;
+}[] = [
+  {
+    value: 'TECHNICAL',
+    title: "Something isn't working",
+    hint: 'Email, devices, network, or a system that is down or misbehaving',
+  },
+  {
+    value: 'BILLING',
+    title: 'A billing or payment question',
+    hint: 'Invoices, renewals, receipts, or changing your plan',
+  },
+  {
+    value: 'GENERAL',
+    title: 'A general question',
+    hint: 'Anything else you would like to ask the team',
+  },
+  {
+    value: 'FEATURE_REQUEST',
+    title: 'An idea or request',
+    hint: 'Something you would like us to set up, change, or build',
+  },
+];
+
 export const PRIORITY_OPTIONS: TicketPriority[] = [
   'LOW',
   'MEDIUM',
   'HIGH',
   'URGENT',
 ];
+
+export const TICKET_STATUS_TONE: Record<
+  TicketStatus,
+  'neutral' | 'success' | 'warn' | 'danger' | 'info'
+> = {
+  OPEN: 'info',
+  IN_PROGRESS: 'warn',
+  ON_HOLD: 'neutral',
+  RESOLVED: 'success',
+  CLOSED: 'neutral',
+};
+
+export const statusTone = (status: string) =>
+  TICKET_STATUS_TONE[status as TicketStatus] ?? 'neutral';
 
 export const statusStyle = (status: string): BadgeStyle =>
   TICKET_STATUS_STYLES[status as TicketStatus] ?? TICKET_STATUS_STYLES.OPEN;

@@ -168,13 +168,14 @@ export type ChangePasswordSchemaType = z.infer<typeof ChangePasswordSchema>;
 export const CreateTicketSchema = z.object({
   subject: z
     .string()
-    .min(3, { message: 'Subject must be at least 3 characters.' })
-    .max(150, { message: 'Subject must be 150 characters or fewer.' }),
+    .trim()
+    .min(3, { message: 'Give your request a short title.' })
+    .max(150, { message: 'Please keep the title under 150 characters.' }),
   description: z
     .string()
-    .min(10, { message: 'Please describe your issue (at least 10 characters).' }),
+    .trim()
+    .min(10, { message: 'Tell us a little more so we can help — 10 characters or so.' }),
   category: z.enum(['GENERAL', 'BILLING', 'TECHNICAL', 'FEATURE_REQUEST']),
-  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']),
 });
 
 export type CreateTicketSchemaType = z.infer<typeof CreateTicketSchema>;
