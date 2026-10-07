@@ -1,19 +1,17 @@
 import { Stack } from 'expo-router';
 
-import { useTheme } from '@/hooks/use-theme';
+import { Colors, FontFamily } from '@/constants/staxis-theme';
 
 export default function BillingLayout() {
-  const theme = useTheme();
-
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: theme.background },
-        headerTintColor: theme.text,
+        headerStyle: { backgroundColor: Colors.bgApp },
+        headerTintColor: Colors.text,
         headerShadowVisible: false,
-        contentStyle: { backgroundColor: theme.background },
+        headerTitleStyle: { fontFamily: FontFamily.bodySemiBold, fontSize: 16 },
+        contentStyle: { backgroundColor: Colors.bgApp },
       }}>
-      {/* The overview keeps its own in-screen header. */}
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="transactions" options={{ title: 'Transactions' }} />
     </Stack>

@@ -17,9 +17,7 @@ import { Colors, Palette, Radius, Spacing } from '@/constants/staxis-theme';
 import { postData } from '@/lib/api';
 import {
   CATEGORY_OPTIONS,
-  PRIORITY_OPTIONS,
   categoryLabel,
-  priorityLabel,
 } from '@/lib/tickets';
 import { TicketListItem } from '@/lib/types';
 import { CreateTicketSchema, CreateTicketSchemaType } from '@/lib/zod-schema';
@@ -75,7 +73,6 @@ export default function NewTicketScreen() {
       subject: '',
       description: '',
       category: 'GENERAL',
-      priority: 'LOW',
     },
   });
 
@@ -153,24 +150,6 @@ export default function NewTicketScreen() {
                 value={value}
                 onChange={onChange}
                 getLabel={categoryLabel}
-              />
-            )}
-          />
-        </View>
-
-        <View>
-          <StaxisText variant="formLabel" style={styles.fieldLabel}>
-            Priority
-          </StaxisText>
-          <Controller
-            control={control}
-            name="priority"
-            render={({ field: { onChange, value } }) => (
-              <ChoiceChips
-                options={PRIORITY_OPTIONS}
-                value={value}
-                onChange={onChange}
-                getLabel={priorityLabel}
               />
             )}
           />
