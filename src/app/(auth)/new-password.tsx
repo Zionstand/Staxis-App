@@ -1,3 +1,4 @@
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
@@ -10,14 +11,18 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { StaxisButton, StaxisInput, StaxisLogo, StaxisText } from '@/components/staxis';
 import { Colors, Palette, Spacing } from '@/constants/staxis-theme';
+import { ErrorModal } from '@/components/error-modal';
 import { postData } from '@/lib/api';
+import { getAuthFieldErrors, getUserFacingError } from '@/lib/user-facing-error';
 import { maskEmail } from '@/lib/utils';
 import { NewPasswordSchema, NewPasswordSchemaType } from '@/lib/zod-schema';
 
 export default function NewPasswordScreen() {
+  const headerHeight = useHeaderHeight();
   const { email, otp } = useLocalSearchParams<{ email: string; otp: string }>();
 
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -27,8 +32,11 @@ export default function NewPasswordScreen() {
   const {
     control,
     handleSubmit,
+    trigger,
+    setError,
     formState: { errors },
   } = useForm<NewPasswordSchemaType>({
+    reValidateMode: 'onChange',
     resolver: zodResolver(NewPasswordSchema),
     defaultValues: { email, otp, newPassword: '', confirmPassword: '' },
   });
@@ -39,10 +47,13 @@ export default function NewPasswordScreen() {
     try {
       await postData('/auth/set-new-password', values);
       setSuccess(true);
-    } catch (err: any) {
-      const message =
-        err?.response?.data?.message ?? 'Something went wrong. Please try again.';
-      setSubmitError(Array.isArray(message) ? message[0] : message);
+    } catch (err: unknown) {
+        const fieldErrors = getAuthFieldErrors(err, ["newPassword","confirmPassword"]);
+        if (Object.keys(fieldErrors).length) {
+          Object.entries(fieldErrors).forEach(([field, message]) => setError(field as keyof NewPasswordSchemaType, { type: 'server', message }));
+        } else {
+          setSubmitError(getUserFacingError(err));
+        }
     } finally {
       setLoading(false);
     }
@@ -50,7 +61,7 @@ export default function NewPasswordScreen() {
 
   if (success) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
         <View style={styles.successInner}>
           <StaxisLogo variant="red" size={40} />
 
@@ -67,15 +78,17 @@ export default function NewPasswordScreen() {
             block
           />
         </View>
-      </View>
+        <ErrorModal message={submitError} onDismiss={() => setSubmitError(null)} />
+    </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={headerHeight}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -102,7 +115,7 @@ export default function NewPasswordScreen() {
                   secureTextEntry
                   autoComplete="password-new"
                   onBlur={onBlur}
-                  onChangeText={onChange}
+                  onChangeText={(text) => { onChange(text); if (errors.confirmPassword) void trigger('confirmPassword'); }}
                   value={value}
                   error={errors.newPassword?.message}
                 />
@@ -126,12 +139,6 @@ export default function NewPasswordScreen() {
               )}
             />
 
-            {submitError && (
-              <StaxisText variant="formHint" style={{ color: Palette.signal }}>
-                {submitError}
-              </StaxisText>
-            )}
-
             <StaxisButton
               label={loading ? '' : 'Update password'}
               onPress={handleSubmit(onSubmit)}
@@ -142,7 +149,8 @@ export default function NewPasswordScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+      <ErrorModal message={submitError} onDismiss={() => setSubmitError(null)} />
+    </SafeAreaView>
   );
 }
 
@@ -154,12 +162,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xxl,
   },
   inner: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     gap: Spacing.sm,
   },
   successInner: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: Spacing.xxl,
     gap: Spacing.sm,

@@ -1,16 +1,15 @@
 import { Stack } from 'expo-router';
 
-import { Colors, FontFamily } from '@/constants/staxis-theme';
+import { Colors } from '@/constants/staxis-theme';
+import { renderWorkspaceHeader } from '@/components/workspace-header';
 
 export default function ProfileLayout() {
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: Colors.bgApp },
-        headerTintColor: Colors.text,
-        headerShadowVisible: false,
-        headerTitleStyle: { fontFamily: FontFamily.bodySemiBold, fontSize: 16 },
+        header: renderWorkspaceHeader,
         contentStyle: { backgroundColor: Colors.bgApp },
+        animation: 'slide_from_right',
       }}>
       <Stack.Screen name="index" options={{ title: 'Profile' }} />
       <Stack.Screen name="edit" options={{ title: 'Edit Profile' }} />

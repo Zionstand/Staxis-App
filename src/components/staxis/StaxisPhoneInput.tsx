@@ -66,6 +66,7 @@ export function StaxisPhoneInput({
         codeTextStyle={styles.codeText}
         flagButtonStyle={styles.flagButton}
         countryPickerButtonStyle={styles.countryPicker}
+        countryPickerProps={{ theme: { fontFamily: FontFamily.body } }}
         placeholder="Phone number"
         textInputProps={{
           placeholderTextColor: Colors.text3,

@@ -1,6 +1,7 @@
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
   ActivityIndicator,
@@ -11,23 +12,27 @@ import {
   View,
 } from 'react-native';
 
-import { StaxisButton, StaxisInput, StaxisText } from '@/components/staxis';
+import { ErrorModal } from '@/components/error-modal';
+import { StaxisButton, StaxisInput } from '@/components/staxis';
 import { Colors, Palette, Spacing } from '@/constants/staxis-theme';
 import { fetchData, updateData } from '@/lib/api';
 import { ProfileData } from '@/lib/types';
+import { getUserFacingError } from '@/lib/user-facing-error';
 import { EditProfileSchema, EditProfileSchemaType } from '@/lib/zod-schema';
 import { useAuth } from '@/store/use-auth';
+import { session } from '@/lib/session';
 
 type Field = {
   name: keyof EditProfileSchemaType;
   label: string;
   placeholder: string;
   keyboardType?: 'default' | 'phone-pad';
+  required?: boolean;
 };
 
 const FIELDS: Field[] = [
-  { name: 'firstName', label: 'First name', placeholder: 'Jane' },
-  { name: 'lastName', label: 'Last name', placeholder: 'Doe' },
+  { name: 'firstName', label: 'First name', placeholder: 'Jane', required: true },
+  { name: 'lastName', label: 'Last name', placeholder: 'Doe', required: true },
   { name: 'phoneNumber', label: 'Phone', placeholder: '+2348012345678', keyboardType: 'phone-pad' },
   { name: 'address', label: 'Address', placeholder: 'Street address' },
   { name: 'city', label: 'City', placeholder: 'City' },
@@ -36,12 +41,17 @@ const FIELDS: Field[] = [
 ];
 
 export default function EditProfileScreen() {
+  const headerHeight = useHeaderHeight();
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const storeUser = useAuth((s) => s.user);
   const setUser = useAuth((s) => s.setUser);
 
   const [prefilling, setPrefilling] = useState(true);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [prefillFailed, setPrefillFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const {
     control,
@@ -49,6 +59,7 @@ export default function EditProfileScreen() {
     reset,
     formState: { errors },
   } = useForm<EditProfileSchemaType>({
+    mode: 'onChange',
     resolver: zodResolver(EditProfileSchema),
     defaultValues: {
       firstName: '',
@@ -76,8 +87,11 @@ export default function EditProfileScreen() {
           state: me.state ?? '',
           country: me.country ?? '',
         });
-      } catch {
-        /* keep empty defaults */
+      } catch (error) {
+        if (active) {
+          setPrefillFailed(true);
+          setSubmitError(getUserFacingError(error, 'Could not load your profile. Please retry before editing.'));
+        }
       } finally {
         if (active) setPrefilling(false);
       }
@@ -85,28 +99,29 @@ export default function EditProfileScreen() {
     return () => {
       active = false;
     };
-  }, [reset]);
+  }, [reset, reloadKey]);
 
   const onSubmit = async (values: EditProfileSchemaType) => {
     setSubmitError(null);
     setLoading(true);
+    const expected = session.current();
     try {
       const updated = await updateData<ProfileData>('/user/me', values);
+      if (!mounted.current || !session.isCurrent(expected)) return;
       if (storeUser) {
-        setUser({
+        await setUser({
           ...storeUser,
           firstName: updated.firstName,
           lastName: updated.lastName,
           phoneNumber: updated.phoneNumber ?? undefined,
-        });
+        }, expected);
       }
-      router.back();
-    } catch (err: any) {
-      const message =
-        err?.response?.data?.message ?? 'Could not save your changes. Try again.';
-      setSubmitError(Array.isArray(message) ? message[0] : message);
+      if (mounted.current && session.isCurrent(expected)) router.back();
+    } catch (err) {
+      if (!mounted.current || !session.isCurrent(expected)) return;
+      setSubmitError(getUserFacingError(err, 'Could not save your changes. Please try again.'));
     } finally {
-      setLoading(false);
+      if (mounted.current) setLoading(false);
     }
   };
 
@@ -122,6 +137,7 @@ export default function EditProfileScreen() {
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    keyboardVerticalOffset={headerHeight}
     >
     <ScrollView
       style={styles.scroll}
@@ -139,6 +155,7 @@ export default function EditProfileScreen() {
                 label={f.label}
                 placeholder={f.placeholder}
                 keyboardType={f.keyboardType ?? 'default'}
+                required={f.required}
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -148,20 +165,21 @@ export default function EditProfileScreen() {
           />
         ))}
 
-        {submitError && (
-          <StaxisText variant="formHint" style={{ color: Palette.signal }}>
-            {submitError}
-          </StaxisText>
-        )}
+        {prefillFailed && <StaxisButton label="Retry loading profile" onPress={() => {
+          setPrefilling(true);
+          setPrefillFailed(false);
+          setReloadKey((value) => value + 1);
+        }} block />}
 
         <StaxisButton
           label={loading ? '' : 'Save changes'}
-          onPress={handleSubmit(onSubmit)}
-          disabled={loading}
+          onPress={() => { void handleSubmit(onSubmit)(); }}
+          disabled={loading || prefillFailed}
           block
           icon={loading ? <ActivityIndicator color={Palette.bone} /> : undefined}
         />
       </ScrollView>
+      <ErrorModal message={submitError} onDismiss={() => setSubmitError(null)} />
     </KeyboardAvoidingView>
   );
 }

@@ -1,5 +1,4 @@
 import { Image } from 'expo-image';
-import { StyleSheet } from 'react-native';
 
 const logos = {
   red: require('@/../assets/images/staxis-logo-red.png'),

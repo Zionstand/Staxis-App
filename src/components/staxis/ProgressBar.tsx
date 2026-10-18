@@ -1,6 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 
-import { Palette } from '@/constants/staxis-theme';
+import { Palette, Radius } from '@/constants/staxis-theme';
 
 export type ProgressBarProps = {
   progress: number;
@@ -34,6 +34,6 @@ export function ProgressBar({
 }
 
 const styles = StyleSheet.create({
-  track: { borderRadius: 3, overflow: 'hidden' },
-  fill: { borderRadius: 3 },
+  track: { borderRadius: Radius.xs, overflow: 'hidden' },
+  fill: { borderRadius: Radius.xs },
 });

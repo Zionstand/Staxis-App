@@ -1,3 +1,4 @@
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import {
@@ -31,6 +32,8 @@ import {
 } from '@/lib/tickets';
 import { TicketDetail, TicketMessage } from '@/lib/types';
 import { fmtDateTime } from '@/lib/utils';
+import { ErrorModal } from '@/components/error-modal';
+import { getUserFacingError } from '@/lib/user-facing-error';
 
 type Bubble = {
   key: string;
@@ -87,7 +90,7 @@ function MessageBubble({ bubble }: { bubble: Bubble }) {
         </StaxisText>
         <StaxisText
           variant="listTime"
-          style={fromUser ? { color: 'rgba(245,242,236,0.62)' } : undefined}
+          style={fromUser ? { color: Colors.textMuteOnDark } : undefined}
         >
           {fmtDateTime(bubble.createdAt)}
         </StaxisText>
@@ -97,12 +100,14 @@ function MessageBubble({ bubble }: { bubble: Bubble }) {
 }
 
 export default function TicketDetailScreen() {
+  const headerHeight = useHeaderHeight();
   const { id } = useLocalSearchParams<{ id: string }>();
   const scrollRef = useRef<ScrollView>(null);
 
   const [data, setData] = useState<TicketDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
 
@@ -111,8 +116,10 @@ export default function TicketDetailScreen() {
       const result = await fetchData<TicketDetail>(`/tickets/my/${id}`);
       setData(result);
       setError(false);
-    } catch {
+      setErrorMessage(null);
+    } catch (failure) {
       setError(true);
+      setErrorMessage(getUserFacingError(failure, 'Could not load this ticket. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -149,8 +156,8 @@ export default function TicketDetailScreen() {
       requestAnimationFrame(() =>
         scrollRef.current?.scrollToEnd({ animated: true }),
       );
-    } catch {
-      setError(true);
+    } catch (failure) {
+      setErrorMessage(getUserFacingError(failure, 'Your reply was not sent. Please try again.'));
     } finally {
       setSending(false);
     }
@@ -172,6 +179,7 @@ export default function TicketDetailScreen() {
           message="Check your connection and try again."
           action={{ label: 'Retry', onPress: load }}
         />
+        <ErrorModal message={errorMessage} onDismiss={() => setErrorMessage(null)} />
       </View>
     );
   }
@@ -204,9 +212,10 @@ export default function TicketDetailScreen() {
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 96 : 0}
+      keyboardVerticalOffset={headerHeight}
     >
       <Stack.Screen options={{ title: `#${data.ticketNumber}` }} />
+      <ErrorModal message={errorMessage} onDismiss={() => setErrorMessage(null)} />
       <ScrollView
         ref={scrollRef}
         style={styles.scroll}

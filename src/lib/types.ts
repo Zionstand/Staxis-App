@@ -37,12 +37,15 @@ export interface Company {
 }
 
 export interface Transaction {
+  requiresReview?: boolean;
   id: string;
   amount: number;
   description: string;
   status: string;
   date: string;
   type: string;
+  paystackRef?: string | null;
+  canResume?: boolean;
 }
 
 export interface TransactionsPage {

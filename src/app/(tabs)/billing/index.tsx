@@ -18,13 +18,23 @@ import {
   ProgressBar,
   SectionLabel,
   StaxisCard,
+  StaxisButton,
   StaxisTag,
   StaxisText,
 } from '@/components/staxis';
 import { Colors, Palette, Radius, Spacing } from '@/constants/staxis-theme';
-import { fetchData } from '@/lib/api';
+import { fetchData, postData } from '@/lib/api';
 import { ApiPlan, DashboardData } from '@/lib/types';
 import { daysUntil, fmtDate, fmtNaira } from '@/lib/utils';
+import { ErrorModal } from '@/components/error-modal';
+import { getUserFacingError } from '@/lib/user-facing-error';
+import { ConfirmDialog } from '@/components/confirm-dialog';
+
+type RenewalAgreement = {
+  id: string; status: string; autoRenew: boolean; cancellationPending: boolean;
+  paidThrough: string | null; nextPaymentAt: string | null; description: string;
+  canCancel: boolean;
+};
 
 function PlanRow({ plan }: { plan: ApiPlan }) {
   return (
@@ -56,14 +66,33 @@ export default function BillingScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [agreements, setAgreements] = useState<RenewalAgreement[]>([]);
+  const [renewalStatusError, setRenewalStatusError] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<RenewalAgreement | null>(null);
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [renewalMessage, setRenewalMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const result = await fetchData<DashboardData>('/user/dashboard');
-      setData(result);
+      const [dashboardResult, renewalResult] = await Promise.allSettled([
+        fetchData<DashboardData>('/user/dashboard'),
+        fetchData<{ agreements: RenewalAgreement[] }>('/payment/renewal'),
+      ]);
+      if (dashboardResult.status === 'rejected') throw dashboardResult.reason;
+      setData(dashboardResult.value);
+      if (renewalResult.status === 'fulfilled') {
+        setAgreements(renewalResult.value.agreements ?? []);
+        setRenewalStatusError(false);
+      } else {
+        setAgreements([]);
+        setRenewalStatusError(true);
+      }
       setError(false);
-    } catch {
+      setErrorMessage(null);
+    } catch (failure) {
       setError(true);
+      setErrorMessage(getUserFacingError(failure, 'Could not load billing details. Please try again.'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -79,6 +108,27 @@ export default function BillingScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     load();
+  };
+
+  const cancelRenewal = async () => {
+    if (!cancelTarget || cancelBusy) return;
+    setCancelBusy(true);
+    setRenewalMessage(null);
+    try {
+      const result = await postData<RenewalAgreement>(`/payment/renewal/${encodeURIComponent(cancelTarget.id)}/cancel`, {});
+      setAgreements((current) => current.map((item) => item.id === cancelTarget.id ? result : item));
+      void load();
+      setCancelTarget(null);
+      setRenewalMessage(result.cancellationPending
+        ? 'Your request is processing. Automatic renewal has not been confirmed as stopped yet.'
+        : result.autoRenew
+          ? 'Automatic renewal is still active. Please try again or contact Support.'
+          : `Automatic renewal is off. Your paid access continues through ${result.paidThrough ? fmtDate(result.paidThrough) : 'the end of the current period'}.`);
+    } catch (failure) {
+      setErrorMessage(getUserFacingError(failure, 'Could not stop automatic renewal. Please try again or contact Support.'));
+    } finally {
+      setCancelBusy(false);
+    }
   };
 
   if (loading && !data) {
@@ -97,6 +147,7 @@ export default function BillingScreen() {
           message="Pull down to try again."
           action={{ label: 'Retry', onPress: load }}
         />
+        <ErrorModal message={errorMessage} onDismiss={() => setErrorMessage(null)} />
       </View>
     );
   }
@@ -114,6 +165,11 @@ export default function BillingScreen() {
   const subtotal = plans.reduce((sum, p) => sum + (p.price ?? 0), 0);
   const bundleDiscount = company?.bundleDiscount ?? 0;
   const total = company?.amount ?? 0;
+  const cycle = company?.subscriptionType;
+  const periodLabel = cycle === 'annually' ? 'year' : cycle === 'quarterly' ? 'quarter' : 'month';
+  const periodMonths = cycle === 'annually' ? 12 : cycle === 'quarterly' ? 3 : 1;
+  const periodSubtotal = subtotal * periodMonths;
+  const periodDiscount = Math.max(0, periodSubtotal - total);
 
   const nextBilling = company?.nextBilling ?? null;
   const daysToRenewal = nextBilling ? daysUntil(nextBilling) : null;
@@ -126,7 +182,7 @@ export default function BillingScreen() {
 
   const renewalProgress =
     nextBilling && daysToRenewal !== null
-      ? Math.max(0, Math.min(1, (30 - daysToRenewal) / 30))
+      ? Math.max(0, Math.min(1, 1 - daysToRenewal / (periodMonths === 12 ? 365 : periodMonths * 30)))
       : 0;
 
   return (
@@ -137,13 +193,25 @@ export default function BillingScreen() {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
-      <SafeAreaView edges={['top']} style={styles.safe}>
+      <ErrorModal message={errorMessage} onDismiss={() => setErrorMessage(null)} />
+      <ConfirmDialog
+        visible={!!cancelTarget}
+        title="Stop automatic renewal?"
+        message={`Your paid access will continue through ${cancelTarget?.paidThrough ? fmtDate(cancelTarget.paidThrough) : 'the end of the current billing period'}. We’ll ask the payment provider to stop future renewals; the change is complete only after it is confirmed.`}
+        confirmLabel={cancelBusy ? 'Processing…' : 'Stop automatic renewal'}
+        onConfirm={cancelRenewal}
+        onDismiss={() => setCancelTarget(null)}
+        busy={cancelBusy}
+      />
+      {renewalMessage && <Banner variant="warn" title="Renewal update" message={renewalMessage} />}
+      <SafeAreaView edges={[]} style={styles.safe}>
         <PageHeader title="Billing" subtitle={company?.name} />
 
         {!company ? (
           <EmptyState
             title="No subscription yet"
             message="Once your company is set up with a plan, billing details will appear here."
+            action={{ label: 'Choose a plan', onPress: () => router.push('/(tabs)/billing/renew') }}
           />
         ) : (
           <>
@@ -154,7 +222,7 @@ export default function BillingScreen() {
                 title="Payment overdue"
                 message="Settle your balance to restore full access."
                 action="Pay now"
-                onAction={() => {/* TODO: payment flow */}}
+                onAction={() => router.push('/(tabs)/billing/renew')}
               />
             )}
 
@@ -164,18 +232,18 @@ export default function BillingScreen() {
                 title={`Trial — ${trialDaysLeft} day${trialDaysLeft !== 1 ? 's' : ''} left`}
                 message={`Expires ${fmtDate(trialEndsAt)}.`}
                 action="Upgrade"
-                onAction={() => {/* TODO: upgrade flow */}}
+                onAction={() => router.push('/(tabs)/billing/renew')}
               />
             )}
 
             {/* ── Status + Spend overview ── */}
             <View style={styles.metricRow}>
               <MetricCard
-                label="Monthly Cost"
-                value={total > 0 ? `${fmtNaira(total)}/mo` : '—'}
+                label="Subscription Cost"
+                value={total > 0 ? `${fmtNaira(total)}/${periodLabel}` : '—'}
                 footer={
                   bundleDiscount > 0
-                    ? `Saving ${fmtNaira(bundleDiscount)}/mo`
+                    ? `Saving ${fmtNaira(bundleDiscount)}/${periodLabel}`
                     : undefined
                 }
                 trend={bundleDiscount > 0 ? 'up' : undefined}
@@ -236,6 +304,37 @@ export default function BillingScreen() {
               )}
             </StaxisCard>
 
+            {renewalStatusError && (
+              <StaxisCard title="Automatic renewal status unavailable">
+                <StaxisText variant="bodySm">Could not load your current renewal status. Retry to confirm whether a subscription will renew.</StaxisText>
+                <StaxisButton variant="ghost" label="Retry" onPress={() => { setRefreshing(true); void load(); }} disabled={refreshing} block />
+              </StaxisCard>
+            )}
+
+            {agreements.length > 0 && (
+              <StaxisCard title="Automatic renewal">
+                {agreements.map((agreement) => (
+                  <View key={agreement.id} style={{ gap: Spacing.sm }}>
+                    <StaxisText variant="bodyBase">{agreement.description}</StaxisText>
+                    <StaxisText variant="bodySm">
+                      {agreement.cancellationPending
+                        ? 'Stop request is processing. Renewal is not yet confirmed as stopped.'
+                        : agreement.status === 'PENDING'
+                          ? 'Checkout is awaiting payment. Automatic renewal starts only after payment.'
+                        : agreement.autoRenew
+                          ? `Renews automatically${agreement.nextPaymentAt ? ` on ${fmtDate(agreement.nextPaymentAt)}` : ''}.`
+                          : `Automatic renewal is off. Paid access continues through ${agreement.paidThrough ? fmtDate(agreement.paidThrough) : 'the current period'}.`}
+                    </StaxisText>
+                    {agreement.canCancel && agreement.autoRenew && !agreement.cancellationPending && (
+                      <Pressable accessibilityRole="button" onPress={() => setCancelTarget(agreement)}>
+                        <StaxisText variant="cardAction">Stop automatic renewal</StaxisText>
+                      </Pressable>
+                    )}
+                  </View>
+                ))}
+              </StaxisCard>
+            )}
+
             {/* ── Plans ── */}
             <View style={styles.section}>
               <SectionLabel>
@@ -253,18 +352,18 @@ export default function BillingScreen() {
               <StaxisCard title="Cost Breakdown">
                 <View style={styles.row}>
                   <StaxisText variant="bodySm">Subtotal</StaxisText>
-                  <StaxisText variant="bodySm">{fmtNaira(subtotal)}</StaxisText>
+                  <StaxisText variant="bodySm">{fmtNaira(periodSubtotal)}</StaxisText>
                 </View>
-                {bundleDiscount > 0 && (
+                {periodDiscount > 0 && (
                   <View style={styles.row}>
-                    <StaxisText variant="bodySm">Bundle discount</StaxisText>
+                    <StaxisText variant="bodySm">Discount</StaxisText>
                     <StaxisText variant="bodySm" style={{ color: Palette.success }}>
-                      -{fmtNaira(bundleDiscount)}
+                      -{fmtNaira(periodDiscount)}
                     </StaxisText>
                   </View>
                 )}
                 <View style={[styles.row, styles.totalRow]}>
-                  <StaxisText variant="listTitle">Total/month</StaxisText>
+                  <StaxisText variant="listTitle">Total/{periodLabel}</StaxisText>
                   <StaxisText variant="listTitle">{fmtNaira(total)}</StaxisText>
                 </View>
               </StaxisCard>
@@ -275,24 +374,29 @@ export default function BillingScreen() {
               title="Recent Payments"
               subtitle={`${fmtNaira(totalSpent)} lifetime`}
               headerRight={
-                transactions.length > 0 ? (
                   <Pressable
                     onPress={() => router.push('/(tabs)/billing/transactions')}
                   >
                     <StaxisText variant="cardAction">View all</StaxisText>
                   </Pressable>
-                ) : undefined
               }
             >
               {transactions.length > 0 ? (
                 transactions.slice(0, 3).map((t) => (
-                  <View key={t.id} style={styles.txnRow}>
+                  <Pressable key={t.id} style={styles.txnRow}
+                    disabled={t.status.toUpperCase() !== 'PENDING' || !t.paystackRef || t.canResume === false}
+                    accessibilityRole={t.status.toUpperCase() === 'PENDING' && t.paystackRef && t.canResume !== false ? 'button' : undefined}
+                    onPress={() => router.push({ pathname: '/(tabs)/billing/pending', params: { reference: t.paystackRef! } })}>
                     <View style={{ flex: 1 }}>
                       <StaxisText variant="listTitle">{t.description}</StaxisText>
                       <StaxisText variant="listTime">{fmtDate(t.date)}</StaxisText>
+                      <StaxisText variant="listSub" style={t.status.toUpperCase() === 'PENDING' ? { color: Palette.warn } : undefined}>
+                        {t.status.toUpperCase() === 'PENDING' && t.paystackRef && t.canResume !== false ? 'Pending · Review payment →' : t.status}
+                      </StaxisText>
+                      {t.requiresReview && <StaxisText variant="listSub">Payment received · awaiting admin review</StaxisText>}
                     </View>
                     <StaxisText variant="listTitle">{fmtNaira(t.amount)}</StaxisText>
-                  </View>
+                  </Pressable>
                 ))
               ) : (
                 <EmptyState
@@ -302,10 +406,9 @@ export default function BillingScreen() {
               )}
             </StaxisCard>
 
-            <StaxisText variant="formHint" style={styles.footnote}>
-              To change your plan or update payment details, visit the web
-              dashboard or contact Support.
-            </StaxisText>
+            <StaxisButton label={isTrial || !paymentVerified ? 'Choose a plan and pay' : 'Renew or change plans'}
+              onPress={() => router.push('/(tabs)/billing/renew')} block />
+            {error && <StaxisText variant="formHint" style={styles.footnote}>Could not refresh billing. Pull down to retry.</StaxisText>}
           </>
         )}
       </SafeAreaView>

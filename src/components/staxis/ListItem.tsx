@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 
-import { Colors, Spacing } from '@/constants/staxis-theme';
+import { Colors, Radius, Spacing } from '@/constants/staxis-theme';
 
 import { StaxisText } from './StaxisText';
 
@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
   icon: {
     width: 32,
     height: 32,
-    borderRadius: 999,
+    borderRadius: Radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },

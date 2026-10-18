@@ -1,0 +1,34 @@
+[
+  {
+    "package": "node-forge",
+    "version": "1.4.0",
+    "file": "lib/rsa.js",
+    "artifact": "node-forge-rsa.js",
+    "originalSha256": "fd4740238145ec26470eb3f06a627c72039538ce1307dbdce40521f94dfd0a50",
+    "patchedSha256": "c9b1e3799e230528b6d6815c1f6cd3c6058b9d45975264b55d995abb976589af"
+  },
+  {
+    "package": "decode-uri-component",
+    "version": "0.2.2",
+    "file": "index.js",
+    "artifact": "decode-uri-component-index.js",
+    "originalSha256": "3b8ba0a765e1089d11bba9a919d0d8789ecd9a6833ea078d8d9114e1db093863",
+    "patchedSha256": "3fb172734d8720cb20daf32279a98d48ab6d5afabdabc9d19ba22bce9ceb920a"
+  },
+  {
+    "package": "braces",
+    "version": "3.0.3",
+    "file": "lib/parse.js",
+    "artifact": "braces-parse.js",
+    "originalSha256": "e572166565f15fa6ad9865ae49d678218e32aabfd1b3720f6d0d43d39800d310",
+    "patchedSha256": "5af90bf2bff689dcea231ed9a25a5fe683312f3eb61706363350f11f4f6c22d5"
+  },
+  {
+    "package": "braces",
+    "version": "3.0.3",
+    "file": "index.js",
+    "artifact": "braces-index.js",
+    "originalSha256": "332ea07c7b006361aad12aa994ca75dc1db8e8382b884909e2f38f10b85c88a4",
+    "patchedSha256": "9335a1757157b4d349fc4ac3661571f660a14f5e38878ac3dafc1f5998332e3e"
+  }
+]

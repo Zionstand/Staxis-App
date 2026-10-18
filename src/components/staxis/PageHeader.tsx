@@ -14,7 +14,7 @@ export function PageHeader({ title, subtitle, right }: PageHeaderProps) {
   return (
     <View style={styles.header}>
       <View style={styles.left}>
-        <StaxisText variant="pageTitle">{title}</StaxisText>
+        <StaxisText variant="pageTitle" accessibilityRole="header">{title}</StaxisText>
         {subtitle && (
           <StaxisText variant="pageSub" style={{ marginTop: 4 }}>
             {subtitle}

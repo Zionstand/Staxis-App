@@ -1,3 +1,4 @@
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
@@ -10,13 +11,15 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { StaxisButton, StaxisInput, StaxisLogo, StaxisText } from '@/components/staxis';
 import { Colors, Palette, Spacing } from '@/constants/staxis-theme';
+import { ErrorModal } from '@/components/error-modal';
 import { postData } from '@/lib/api';
-import { tokenStorage } from '@/lib/token-storage';
+import { getAuthFieldErrors, getUserFacingError } from '@/lib/user-facing-error';
 import { LoginSchema, LoginSchemaType } from '@/lib/zod-schema';
-import { useAuth } from '@/store/use-auth';
+import { beginSignIn, completeSignIn } from '@/store/use-auth';
 
 type LoginResponse = {
   user: any;
@@ -25,15 +28,17 @@ type LoginResponse = {
 };
 
 export default function LoginScreen() {
-  const setUser = useAuth((s) => s.setUser);
+  const headerHeight = useHeaderHeight();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const {
     control,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm<LoginSchemaType>({
+    reValidateMode: 'onChange',
     resolver: zodResolver(LoginSchema),
     defaultValues: { email: '', password: '' },
   });
@@ -41,25 +46,34 @@ export default function LoginScreen() {
   const onSubmit = async (values: LoginSchemaType) => {
     setSubmitError(null);
     setLoading(true);
+    const attempt = beginSignIn();
     try {
       const data = await postData<LoginResponse>('/auth/login', values);
-      await tokenStorage.setTokens(data.access_token, data.refresh_token);
-      setUser(data.user);
+      await completeSignIn(attempt, data);
       router.replace('/(tabs)');
-    } catch (err: any) {
-      const message =
-        err?.response?.data?.message ?? 'Login failed. Please try again.';
-      setSubmitError(Array.isArray(message) ? message[0] : message);
+    } catch (err: unknown) {
+      if ((err as { response?: { status?: number; data?: { message?: unknown } } })?.response?.status === 401 &&
+          (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message === 'Unauthorized') {
+        setError('password', { type: 'server', message: 'The email or password is incorrect. Check both and try again.' });
+      } else {
+        const fieldErrors = getAuthFieldErrors(err, ["email","password"]);
+        if (Object.keys(fieldErrors).length) {
+          Object.entries(fieldErrors).forEach(([field, message]) => setError(field as keyof LoginSchemaType, { type: 'server', message }));
+        } else {
+          setSubmitError(getUserFacingError(err));
+        }
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={headerHeight}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -115,12 +129,6 @@ export default function LoginScreen() {
               <StaxisText variant="cardLink">Forgot password?</StaxisText>
             </Link>
 
-            {submitError && (
-              <StaxisText variant="formHint" style={{ color: Palette.signal }}>
-                {submitError}
-              </StaxisText>
-            )}
-
             <StaxisButton
               label={loading ? '' : 'Sign in'}
               onPress={handleSubmit(onSubmit)}
@@ -140,7 +148,8 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+      <ErrorModal message={submitError} onDismiss={() => setSubmitError(null)} />
+    </SafeAreaView>
   );
 }
 
@@ -152,7 +161,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xxl,
   },
   inner: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     gap: Spacing.sm,
   },

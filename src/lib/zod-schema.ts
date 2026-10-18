@@ -11,14 +11,17 @@ export const RegisterSchema = z
   .object({
     firstName: z
       .string()
-      .min(2, { message: 'First name must be at least 2 characters' }),
+      .min(2, { message: 'First name must be at least 2 characters' })
+      .max(100, { message: 'First name must not exceed 100 characters' }),
     lastName: z
       .string()
-      .min(2, { message: 'Last name must be at least 2 characters' }),
+      .min(2, { message: 'Last name must be at least 2 characters' })
+      .max(100, { message: 'Last name must not exceed 100 characters' }),
     email: z.string().email({ message: 'Enter a valid email address' }),
     password: z
       .string()
       .min(8, { message: 'Password must be at least 8 characters.' })
+      .max(50, { message: 'Password must not exceed 50 characters.' })
       .refine((val) => /[a-z]/.test(val), {
         message: 'Password must contain at least one lowercase letter.',
       })

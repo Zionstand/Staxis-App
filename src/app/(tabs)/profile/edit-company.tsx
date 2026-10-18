@@ -1,3 +1,4 @@
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -15,11 +16,12 @@ import {
   EmptyState,
   StaxisButton,
   StaxisInput,
-  StaxisText,
 } from '@/components/staxis';
+import { ErrorModal } from '@/components/error-modal';
 import { Colors, Palette, Spacing } from '@/constants/staxis-theme';
 import { fetchData, updateData } from '@/lib/api';
 import { ProfileData } from '@/lib/types';
+import { getUserFacingError } from '@/lib/user-facing-error';
 import { EditCompanySchema, EditCompanySchemaType } from '@/lib/zod-schema';
 
 type Field = {
@@ -50,10 +52,13 @@ const FIELDS: Field[] = [
 ];
 
 export default function EditCompanyScreen() {
+  const headerHeight = useHeaderHeight();
   const [prefilling, setPrefilling] = useState(true);
   const [noCompany, setNoCompany] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [prefillFailed, setPrefillFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const {
     control,
@@ -61,6 +66,7 @@ export default function EditCompanyScreen() {
     reset,
     formState: { errors },
   } = useForm<EditCompanySchemaType>({
+    mode: 'onChange',
     resolver: zodResolver(EditCompanySchema),
     defaultValues: {
       companyName: '',
@@ -99,8 +105,11 @@ export default function EditCompanyScreen() {
           state: c.state ?? '',
           country: c.country ?? '',
         });
-      } catch {
-        /* keep empty defaults */
+      } catch (error) {
+        if (active) {
+          setPrefillFailed(true);
+          setSubmitError(getUserFacingError(error, 'Could not load company details. Please retry before editing.'));
+        }
       } finally {
         if (active) setPrefilling(false);
       }
@@ -108,7 +117,7 @@ export default function EditCompanyScreen() {
     return () => {
       active = false;
     };
-  }, [reset]);
+  }, [reset, reloadKey]);
 
   const onSubmit = async (values: EditCompanySchemaType) => {
     setSubmitError(null);
@@ -116,10 +125,8 @@ export default function EditCompanyScreen() {
     try {
       await updateData('/user/company', values);
       router.back();
-    } catch (err: any) {
-      const message =
-        err?.response?.data?.message ?? 'Could not save the company. Try again.';
-      setSubmitError(Array.isArray(message) ? message[0] : message);
+    } catch (err) {
+      setSubmitError(getUserFacingError(err, 'Could not save company details. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -148,6 +155,7 @@ export default function EditCompanyScreen() {
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    keyboardVerticalOffset={headerHeight}
     >
     <ScrollView
       style={styles.scroll}
@@ -175,20 +183,21 @@ export default function EditCompanyScreen() {
           />
         ))}
 
-        {submitError && (
-          <StaxisText variant="formHint" style={{ color: Palette.signal }}>
-            {submitError}
-          </StaxisText>
-        )}
+        {prefillFailed && <StaxisButton label="Retry loading company" onPress={() => {
+          setPrefilling(true);
+          setPrefillFailed(false);
+          setReloadKey((value) => value + 1);
+        }} block />}
 
         <StaxisButton
           label={loading ? '' : 'Save changes'}
           onPress={handleSubmit(onSubmit)}
-          disabled={loading}
+          disabled={loading || prefillFailed}
           block
           icon={loading ? <ActivityIndicator color={Palette.bone} /> : undefined}
         />
       </ScrollView>
+      <ErrorModal message={submitError} onDismiss={() => setSubmitError(null)} />
     </KeyboardAvoidingView>
   );
 }

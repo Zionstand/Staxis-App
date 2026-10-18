@@ -1,6 +1,6 @@
 # Staxis Backend API Reference
 
-NestJS backend. All endpoints prefixed with the controller path. Auth endpoints are public; all others require a Bearer token.
+NestJS backend. All endpoints prefixed with the controller path. Client account and billing routes require a Bearer token. Public routes include the plan catalogue, authentication entry points and the HMAC-authenticated provider webhook; token-authorized guest checkout routes are separate.
 
 ## Auth (`/auth`)
 
@@ -43,14 +43,19 @@ NestJS backend. All endpoints prefixed with the controller path. Auth endpoints 
 
 | Method | Path | Body / Params | Returns | Mobile Screen |
 |--------|------|---------------|---------|---------------|
-| POST | `/payment/verify` | payment verification data | verification result | (not used yet) |
+| POST | `/payment/initialize` | `{ selectedPlans: string[], billingCycle: 'monthly' \| 'quarterly' \| 'annually' }` | `{ authorizationUrl, reference, amount, discountAmount, selectedPlans, billingCycle, mode }` | Billing → Make a payment |
+| POST | `/payment/verify` | `{ reference, selectedPlans, billingCycle, amount, discountAmount, mode }` from initialized checkout | verification result | Billing → Make a payment |
 | GET | `/payment/checkout-context` | — | checkout session info | (not used yet) |
+| GET | `/payment/pending/:reference` | owned payment reference | saved `PaymentCheckout` with original line items and discounts | Billing → Pending payment / resume |
+| DELETE | `/payment/pending/:reference` | owned pending reference | removal confirmation; reference retained in backend audit | Billing → Pending payment |
+| GET | `/payment/renewal` | — | `{ agreements: [{ id, status, autoRenew, isCurrent, cancellationPending, paidThrough, nextPaymentAt, description, canCancel }] }` | Billing |
+| POST | `/payment/renewal/:id/cancel` | owned agreement ID | confirmed or pending cancellation result | Billing → Stop automatic renewal |
 
 ## Plans (`/plans`) — public
 
 | Method | Path | Returns | Mobile Screen |
 |--------|------|---------|---------------|
-| GET | `/plans` | `ApiPlan[]` | (not used yet — plans come via dashboard) |
+| GET | `/plans` | `ApiTrack[]` with nested `plans` | Billing → Make a payment |
 
 ## Data Types (frontend `src/lib/types.ts`)
 
@@ -61,7 +66,7 @@ ProfileData { id, firstName, lastName, email, username, phoneNumber, image, dob,
 TicketListItem { id, ticketNumber, subject, category, priority, status, resolvedAt, createdAt, updatedAt, company, createdBy, assignedTo }
 TicketDetail extends TicketListItem { description, messages[] }
 TicketMessage { id, body, isInternal, senderType, createdAt, sender }
-Transaction { id, amount, description, status, date, type }
+Transaction { id, amount, description, status, date, type, paystackRef?, canResume?, requiresReview? }
 TransactionsPage { transactions[], total, page, limit, hasMore }
 Manager { id, adminId, position, firstName, lastName, email, phoneNumber, image, assignedAt }
 ApiPlan { id, name, price, setupFee?, features[], forLabel, responseTime, highlight? }
@@ -73,10 +78,8 @@ ApiPlan { id, name, price, setupFee?, features[], forLabel, responseTime, highli
 |----------|---------|-----------------|
 | `GET /user/subscription` | Subscription details | Could enhance Billing screen |
 | `GET /tickets/my/open-count` | Quick count | Could use for tab badge |
-| `POST /payment/verify` | Payment verification | Payment flow |
 | `GET /payment/checkout-context` | Checkout session | Payment flow |
 | `POST /auth/google/id-token` | Google sign-in | Login (social auth) |
-| `GET /plans` | Available plans | Plan selection / upgrade screen |
 
 ## Other controllers (not client-facing)
 
@@ -90,3 +93,19 @@ ApiPlan { id, name, price, setupFee?, features[], forLabel, responseTime, highli
 - `ondemand/*` — On-demand service requests
 - `upload/*` — File uploads
 - `reengagement/*` — Re-engagement campaigns
+
+## Mobile subscription checkout
+
+The backend calculates prices and initializes Paystack; the app opens the returned HTTPS Paystack checkout URL using expo-web-browser. No Paystack key is required in the app. Monthly, quarterly (5%), annual (10%), and multi-track bundle (7.5%) savings match the web renewal screen.
+
+The backend saves the original checkout details in a Pending transaction. AsyncStorage holds a per-user local copy; reopening checkout checks the backend before allowing it to resume. Only the checkout owner can retrieve the checkout URL. Cancelling returns to billing while keeping the attempt Pending. Removing a pending payment hides it from customer history while retaining its reference for reconciliation. An admin may close an attempt with a reason and note; closure does not cancel a provider session, refund money, or prove that payment failed.
+
+Verification runs when returning to the app, when reopening Make a payment, or tapping Check payment. Only backend verification activates the subscription. A failed or abandoned checkout can be restarted; a closed attempt clears the local copy so a new checkout can begin. After success, returning to Billing reloads the dashboard and transaction history. The initialized response also includes `subtotal`, `bundleDiscount`, `cycleDiscount` and `lineItems` with original plan names and period prices.
+
+Tickets live under Profile → Support in the app. This navigation change does not change the `/tickets` API paths.
+
+An older attempt paid after a newer subscription purchase is recorded as Paid with `requiresReview: true`. Verification and the `PAYMENT_ALREADY_PAID` restore response carry that flag; the app shows payment received / awaiting admin review and keeps the newer subscription unchanged. Customer history receives only the review flag. Internal review notes and the newer reference remain restricted to administrator feeds. Administrative pending resolution uses `PATCH /payment/admin/pending/:reference/resolve` with `{ reason: 'CUSTOMER_DECLINED' | 'CUSTOMER_MISTAKE' | 'FAILED', note }` and requires an authorized administrator.
+
+Paystack redirects to the configured web billing URL; close that browser to return to Staxis. Automatic app deep-link returns remain follow-up work. Signed webhook settlement, durable server recovery and renewal cancellation are implemented in backend source; follow `../../staxis-backend/PAYMENT_ROLLOUT.md` for required schema/provider/staging checks before release.
+
+Single-plan monthly replace purchases may renew automatically; bundles, multi-plan, merge and quarterly/annual purchases are one-time. An already-paid old renewal continues until the customer explicitly stops it in Billing. A successful matching retry automatically closes older unused attempts as Replaced without routine admin review. References remain traceable, and a later actual second charge must still reconcile. Replaced is a local checkout status, not proof that Paystack cancelled the session or rejected a payment.

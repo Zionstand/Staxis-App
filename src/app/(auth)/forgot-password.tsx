@@ -1,3 +1,4 @@
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
@@ -10,24 +11,30 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { StaxisButton, StaxisInput, StaxisLogo, StaxisText } from '@/components/staxis';
 import { Colors, Palette, Spacing } from '@/constants/staxis-theme';
+import { ErrorModal } from '@/components/error-modal';
 import { postData } from '@/lib/api';
+import { getAuthFieldErrors, getUserFacingError } from '@/lib/user-facing-error';
 import {
   ForgotPasswordSchema,
   ForgotPasswordSchemaType,
 } from '@/lib/zod-schema';
 
 export default function ForgotPasswordScreen() {
+  const headerHeight = useHeaderHeight();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const {
     control,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm<ForgotPasswordSchemaType>({
+    reValidateMode: 'onChange',
     resolver: zodResolver(ForgotPasswordSchema),
     defaultValues: { email: '' },
   });
@@ -41,20 +48,24 @@ export default function ForgotPasswordScreen() {
         pathname: '/(auth)/verify-code',
         params: { email: values.email },
       });
-    } catch (err: any) {
-      const message =
-        err?.response?.data?.message ?? 'Something went wrong. Please try again.';
-      setSubmitError(Array.isArray(message) ? message[0] : message);
+    } catch (err: unknown) {
+        const fieldErrors = getAuthFieldErrors(err, ["email"]);
+        if (Object.keys(fieldErrors).length) {
+          Object.entries(fieldErrors).forEach(([field, message]) => setError(field as keyof ForgotPasswordSchemaType, { type: 'server', message }));
+        } else {
+          setSubmitError(getUserFacingError(err));
+        }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={headerHeight}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -89,12 +100,6 @@ export default function ForgotPasswordScreen() {
               )}
             />
 
-            {submitError && (
-              <StaxisText variant="formHint" style={{ color: Palette.signal }}>
-                {submitError}
-              </StaxisText>
-            )}
-
             <StaxisButton
               label={loading ? '' : 'Send code'}
               onPress={handleSubmit(onSubmit)}
@@ -114,7 +119,8 @@ export default function ForgotPasswordScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+      <ErrorModal message={submitError} onDismiss={() => setSubmitError(null)} />
+    </SafeAreaView>
   );
 }
 
@@ -126,7 +132,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xxl,
   },
   inner: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     gap: Spacing.sm,
   },

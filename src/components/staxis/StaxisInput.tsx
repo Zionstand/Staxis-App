@@ -6,7 +6,6 @@ import {
   type TextInputProps,
   View,
 } from 'react-native';
-import { Eye, EyeClosed } from 'iconoir-react-native';
 
 import {
   Colors,
@@ -32,6 +31,8 @@ export function StaxisInput({
   error,
   secureTextEntry,
   style,
+  onFocus,
+  onBlur,
   ...rest
 }: StaxisInputProps) {
   const [focused, setFocused] = useState(false);
@@ -55,7 +56,7 @@ export function StaxisInput({
         <TextInput
           style={[
             styles.input,
-            isSecure && styles.inputWithEye,
+            isSecure && styles.inputWithVisibilityButton,
             focused && styles.inputFocused,
             error && styles.inputError,
             style,
@@ -64,25 +65,25 @@ export function StaxisInput({
           secureTextEntry={isSecure && !showPassword}
           onFocus={(e) => {
             setFocused(true);
-            rest.onFocus?.(e);
+            onFocus?.(e);
           }}
           onBlur={(e) => {
             setFocused(false);
-            rest.onBlur?.(e);
+            onBlur?.(e);
           }}
           {...rest}
         />
         {isSecure && (
           <Pressable
             onPress={() => setShowPassword((v) => !v)}
-            style={styles.eyeButton}
+            style={styles.visibilityButton}
             hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
           >
-            {showPassword ? (
-              <Eye width={20} height={20} color={Palette.signal} strokeWidth={1.6} />
-            ) : (
-              <EyeClosed width={20} height={20} color={Colors.text3} strokeWidth={1.6} />
-            )}
+            <StaxisText variant="cardAction">
+              {showPassword ? 'Hide' : 'Show'}
+            </StaxisText>
           </Pressable>
         )}
       </View>
@@ -112,10 +113,10 @@ const styles = StyleSheet.create({
     borderRadius: Radius.sm,
     backgroundColor: Colors.bgCard,
   },
-  inputWithEye: { paddingRight: 44 },
+  inputWithVisibilityButton: { paddingRight: 64 },
   inputFocused: { borderColor: Palette.signal },
   inputError: { borderColor: Palette.signal },
-  eyeButton: {
+  visibilityButton: {
     position: 'absolute',
     right: 12,
     top: 0,

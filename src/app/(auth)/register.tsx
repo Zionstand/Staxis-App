@@ -1,9 +1,12 @@
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
+  AccessibilityInfo,
   ActivityIndicator,
+  Animated,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -11,6 +14,7 @@ import {
   Switch,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   StaxisButton,
@@ -20,10 +24,11 @@ import {
   StaxisText,
 } from '@/components/staxis';
 import { Colors, Palette, Spacing } from '@/constants/staxis-theme';
+import { ErrorModal } from '@/components/error-modal';
 import { postData } from '@/lib/api';
-import { tokenStorage } from '@/lib/token-storage';
+import { getAuthFieldErrors, getUserFacingError } from '@/lib/user-facing-error';
 import { RegisterSchema, RegisterSchemaType } from '@/lib/zod-schema';
-import { useAuth } from '@/store/use-auth';
+import { beginSignIn, completeSignIn } from '@/store/use-auth';
 
 type RegisterResponse = {
   user: any;
@@ -32,15 +37,36 @@ type RegisterResponse = {
 };
 
 export default function RegisterScreen() {
-  const setUser = useAuth((s) => s.setUser);
+  const headerHeight = useHeaderHeight();
+
+  const scrollRef = useRef<ScrollView>(null);
+  const fieldPositions = useRef<Record<string, number>>({});
+  const [shake] = useState(() => new Animated.Value(0));
+  useEffect(() => () => shake.stopAnimation(), [shake]);
+  const revealErrors = (fieldErrors: Record<string, unknown>) => {
+    const first = ['firstName', 'lastName', 'email', 'phoneNumber', 'password', 'confirmPassword', 'acceptTerms'].find((field) => field in fieldErrors);
+    if (first) scrollRef.current?.scrollTo({ y: Math.max((fieldPositions.current[first] ?? 0) - Spacing.lg, 0), animated: true });
+    shakeButton();
+  };
+  const shakeButton = () => {
+    void AccessibilityInfo.isReduceMotionEnabled().then((reduceMotion) => {
+      if (reduceMotion) return;
+      shake.stopAnimation();
+      shake.setValue(0);
+      Animated.sequence([8, -8, 6, -6, 0].map((toValue) => Animated.timing(shake, { toValue, duration: 65, useNativeDriver: true }))).start();
+    }).catch(() => {});
+  };
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const {
     control,
     handleSubmit,
+    trigger,
+    setError,
     formState: { errors },
   } = useForm<RegisterSchemaType>({
+    reValidateMode: 'onChange',
     resolver: zodResolver(RegisterSchema),
     defaultValues: {
       firstName: '',
@@ -56,30 +82,37 @@ export default function RegisterScreen() {
   const onSubmit = async (values: RegisterSchemaType) => {
     setSubmitError(null);
     setLoading(true);
+    const attempt = beginSignIn();
     try {
       const data = await postData<RegisterResponse>('/auth/register', values);
-      await tokenStorage.setTokens(data.access_token, data.refresh_token);
-      setUser(data.user);
+      await completeSignIn(attempt, data);
       router.replace('/(tabs)');
-    } catch (err: any) {
-      const message =
-        err?.response?.data?.message ?? 'Registration failed. Please try again.';
-      setSubmitError(Array.isArray(message) ? message[0] : message);
+    } catch (err: unknown) {
+        const fieldErrors = getAuthFieldErrors(err, ["firstName","lastName","email","password","confirmPassword","phoneNumber","acceptTerms"]);
+        if (Object.keys(fieldErrors).length) {
+          Object.entries(fieldErrors).forEach(([field, message]) => setError(field as keyof RegisterSchemaType, { type: 'server', message }));
+          revealErrors(fieldErrors);
+        } else {
+          setSubmitError(getUserFacingError(err));
+        }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={headerHeight}
       >
         <ScrollView
+          ref={scrollRef}
+          style={styles.flex}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="interactive"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         >
           <View style={styles.inner}>
             <StaxisLogo variant="red" size={40} />
@@ -91,7 +124,7 @@ export default function RegisterScreen() {
               Get started with STAXIS
             </StaxisText>
 
-            <View style={styles.nameRow}>
+            <View style={styles.nameRow} onLayout={(event) => { fieldPositions.current.firstName = event.nativeEvent.layout.y; fieldPositions.current.lastName = event.nativeEvent.layout.y; }}>
               <View style={styles.flex}>
                 <Controller
                   control={control}
@@ -128,6 +161,7 @@ export default function RegisterScreen() {
               </View>
             </View>
 
+            <View onLayout={(event) => { fieldPositions.current.email = event.nativeEvent.layout.y; }}>
             <Controller
               control={control}
               name="email"
@@ -145,7 +179,9 @@ export default function RegisterScreen() {
                 />
               )}
             />
+            </View>
 
+            <View onLayout={(event) => { fieldPositions.current.phoneNumber = event.nativeEvent.layout.y; }}>
             <Controller
               control={control}
               name="phoneNumber"
@@ -160,7 +196,9 @@ export default function RegisterScreen() {
                 />
               )}
             />
+            </View>
 
+            <View onLayout={(event) => { fieldPositions.current.password = event.nativeEvent.layout.y; }}>
             <Controller
               control={control}
               name="password"
@@ -171,13 +209,15 @@ export default function RegisterScreen() {
                   secureTextEntry
                   autoComplete="password-new"
                   onBlur={onBlur}
-                  onChangeText={onChange}
+                  onChangeText={(text) => { onChange(text); if (errors.confirmPassword) void trigger('confirmPassword'); }}
                   value={value}
                   error={errors.password?.message}
                 />
               )}
             />
+            </View>
 
+            <View onLayout={(event) => { fieldPositions.current.confirmPassword = event.nativeEvent.layout.y; }}>
             <Controller
               control={control}
               name="confirmPassword"
@@ -194,8 +234,9 @@ export default function RegisterScreen() {
                 />
               )}
             />
+            </View>
 
-            <View style={styles.termsRow}>
+            <View style={styles.termsRow} onLayout={(event) => { fieldPositions.current.acceptTerms = event.nativeEvent.layout.y; }}>
               <Controller
                 control={control}
                 name="acceptTerms"
@@ -217,19 +258,15 @@ export default function RegisterScreen() {
               </StaxisText>
             )}
 
-            {submitError && (
-              <StaxisText variant="formHint" style={{ color: Palette.signal }}>
-                {submitError}
-              </StaxisText>
-            )}
-
+            <Animated.View style={{ transform: [{ translateX: shake }] }}>
             <StaxisButton
               label={loading ? '' : 'Create account'}
-              onPress={handleSubmit(onSubmit)}
+              onPress={() => { void handleSubmit(onSubmit, revealErrors)(); }}
               disabled={loading}
               block
               icon={loading ? <ActivityIndicator color={Palette.bone} /> : undefined}
             />
+            </Animated.View>
 
             <View style={styles.linkRow}>
               <StaxisText variant="bodySm">
@@ -242,7 +279,8 @@ export default function RegisterScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+      <ErrorModal message={submitError} onDismiss={() => setSubmitError(null)} />
+    </SafeAreaView>
   );
 }
 
@@ -255,7 +293,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xxl,
   },
   inner: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     gap: Spacing.sm,
   },

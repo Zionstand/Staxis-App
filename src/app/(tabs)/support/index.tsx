@@ -21,21 +21,18 @@ import { Colors, Palette, Radius, Spacing } from '@/constants/staxis-theme';
 import { fetchData } from '@/lib/api';
 import {
   STATUS_FILTERS,
-  categoryLabel,
   priorityLabel,
-  priorityStyle,
   statusLabel,
-  statusStyle,
 } from '@/lib/tickets';
 import { TicketListItem, TicketStatus } from '@/lib/types';
 import { fromNow } from '@/lib/utils';
+import { ErrorModal } from '@/components/error-modal';
+import { getUserFacingError } from '@/lib/user-facing-error';
 
 function TicketRow({ ticket }: { ticket: TicketListItem }) {
-  const ss = statusStyle(ticket.status);
-
   return (
     <Pressable
-      onPress={() => router.push(`/(tabs)/tickets/${ticket.id}`)}
+      onPress={() => router.push(`/(tabs)/support/${ticket.id}`)}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
       <View style={styles.cardTop}>
@@ -83,6 +80,7 @@ export default function TicketsListScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search.trim()), 350);
@@ -100,8 +98,10 @@ export default function TicketsListScreen() {
       );
       setTickets(result);
       setError(false);
-    } catch {
+      setErrorMessage(null);
+    } catch (failure) {
       setError(true);
+      setErrorMessage(getUserFacingError(failure, 'Could not load tickets. Please try again.'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -121,18 +121,8 @@ export default function TicketsListScreen() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          headerRight: () => (
-            <Pressable
-              onPress={() => router.push('/(tabs)/tickets/new')}
-              hitSlop={8}
-            >
-              <StaxisText variant="cardAction">+ New</StaxisText>
-            </Pressable>
-          ),
-        }}
-      />
+      <ErrorModal message={errorMessage} onDismiss={() => setErrorMessage(null)} />
+      <Stack.Screen options={{}} />
       <FlatList
         data={tickets}
         keyExtractor={(item) => item.id}
@@ -144,6 +134,8 @@ export default function TicketsListScreen() {
         }
         ListHeaderComponent={
           <View style={styles.header}>
+            <StaxisText variant="bodySm">View your support requests and continue conversations with the team.</StaxisText>
+            <StaxisButton label="New support request" block onPress={() => router.push('/(tabs)/support/new')} />
             <StaxisInput
               placeholder="Search tickets..."
               autoCapitalize="none"
@@ -202,7 +194,7 @@ export default function TicketsListScreen() {
               }
               action={{
                 label: 'Create a ticket',
-                onPress: () => router.push('/(tabs)/tickets/new'),
+                onPress: () => router.push('/(tabs)/support/new'),
               }}
             />
           )

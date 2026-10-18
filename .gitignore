@@ -2,6 +2,7 @@
 
 # dependencies
 node_modules/
+docs/
 
 # Expo
 .expo/
@@ -31,6 +32,9 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
+.env.*
+!.env.example
 .env*.local
 
 # typescript
@@ -41,3 +45,20 @@ example
 # generated native folders
 /ios
 /android
+.claude/worktrees/
+.claude/settings.local.json
+
+# Local handoff snapshot
+nextSteps.md
+ClaudeResume.txt
+PRODUCT.md
+security_best_practices_report.md
+security_dependency_audit.json
+security_dependency_audit_after.json
+security_dependency_audit_followup.json
+security_dependency_audit_verified_2026-10-17.json
+security_dependency_fix_preview.json
+security_dependency_remediation.md
+vendor/*
+!vendor/security-patches/
+!vendor/security-patches/**

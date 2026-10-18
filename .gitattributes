@@ -1,0 +1,5 @@
+
+# Deterministic security backport hashes on every checkout.
+vendor/security-patches/** text eol=lf
+# Preserve the upstream license's trailing blank line verbatim.
+vendor/security-patches/forge-LICENSE whitespace=-blank-at-eof

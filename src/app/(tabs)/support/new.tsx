@@ -1,5 +1,6 @@
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
@@ -13,6 +14,7 @@ import {
 } from 'react-native';
 
 import { StaxisButton, StaxisInput, StaxisText } from '@/components/staxis';
+import { ErrorModal } from '@/components/error-modal';
 import { Colors, Palette, Radius, Spacing } from '@/constants/staxis-theme';
 import { postData } from '@/lib/api';
 import {
@@ -20,6 +22,7 @@ import {
   categoryLabel,
 } from '@/lib/tickets';
 import { TicketListItem } from '@/lib/types';
+import { getUserFacingError } from '@/lib/user-facing-error';
 import { CreateTicketSchema, CreateTicketSchemaType } from '@/lib/zod-schema';
 
 function ChoiceChips<T extends string>({
@@ -60,6 +63,13 @@ function ChoiceChips<T extends string>({
 }
 
 export default function NewTicketScreen() {
+  const headerHeight = useHeaderHeight();
+  const params = useLocalSearchParams<{ quoteSubject?: string; quoteDescription?: string }>();
+  const quotePrefill = CreateTicketSchema.safeParse({
+    subject: params.quoteSubject,
+    description: params.quoteDescription,
+    category: 'BILLING',
+  });
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -68,8 +78,9 @@ export default function NewTicketScreen() {
     handleSubmit,
     formState: { errors },
   } = useForm<CreateTicketSchemaType>({
+    mode: 'onChange',
     resolver: zodResolver(CreateTicketSchema),
-    defaultValues: {
+    defaultValues: quotePrefill.success ? quotePrefill.data : {
       subject: '',
       description: '',
       category: 'GENERAL',
@@ -81,11 +92,9 @@ export default function NewTicketScreen() {
     setLoading(true);
     try {
       const ticket = await postData<TicketListItem>('/tickets', values);
-      router.replace(`/(tabs)/tickets/${ticket.id}`);
-    } catch (err: any) {
-      const message =
-        err?.response?.data?.message ?? 'Could not create your ticket. Try again.';
-      setSubmitError(Array.isArray(message) ? message[0] : message);
+      router.replace(`/(tabs)/support/${ticket.id}`);
+    } catch (err) {
+      setSubmitError(getUserFacingError(err, 'Could not create your ticket. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -95,6 +104,7 @@ export default function NewTicketScreen() {
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    keyboardVerticalOffset={headerHeight}
     >
     <ScrollView
       style={styles.scroll}
@@ -102,6 +112,10 @@ export default function NewTicketScreen() {
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
     >
+        {quotePrefill.success && <View style={styles.quoteIntro}>
+          <StaxisText variant="listTitle">Request your custom quote</StaxisText>
+          <StaxisText variant="bodySm">Review the plans below and add your requirements. Your request is sent only when you tap Submit ticket.</StaxisText>
+        </View>}
         <Controller
           control={control}
           name="subject"
@@ -155,12 +169,6 @@ export default function NewTicketScreen() {
           />
         </View>
 
-        {submitError && (
-          <StaxisText variant="formHint" style={{ color: Palette.signal }}>
-            {submitError}
-          </StaxisText>
-        )}
-
         <StaxisButton
           label={loading ? '' : 'Submit ticket'}
           onPress={handleSubmit(onSubmit)}
@@ -169,6 +177,7 @@ export default function NewTicketScreen() {
           icon={loading ? <ActivityIndicator color={Palette.bone} /> : undefined}
         />
       </ScrollView>
+      <ErrorModal message={submitError} onDismiss={() => setSubmitError(null)} />
     </KeyboardAvoidingView>
   );
 }
@@ -183,6 +192,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   fieldLabel: { marginBottom: Spacing.sm },
+  quoteIntro: { gap: Spacing.sm, paddingBottom: Spacing.md },
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',

@@ -1,5 +1,5 @@
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { router } from 'expo-router';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
@@ -9,15 +9,18 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  View,
 } from 'react-native';
 
 import { StaxisButton, StaxisInput, StaxisText } from '@/components/staxis';
+import { ErrorModal } from '@/components/error-modal';
 import { Colors, Palette, Spacing } from '@/constants/staxis-theme';
-import { updateData } from '@/lib/api';
+import { updateData, logoutAndRedirect } from '@/lib/api';
+import { session } from '@/lib/session';
+import { getUserFacingError } from '@/lib/user-facing-error';
 import { ChangePasswordSchema, ChangePasswordSchemaType } from '@/lib/zod-schema';
 
 export default function ChangePasswordScreen() {
+  const headerHeight = useHeaderHeight();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -26,6 +29,7 @@ export default function ChangePasswordScreen() {
     handleSubmit,
     formState: { errors },
   } = useForm<ChangePasswordSchemaType>({
+    mode: 'onChange',
     resolver: zodResolver(ChangePasswordSchema),
     defaultValues: {
       currentPassword: '',
@@ -37,15 +41,14 @@ export default function ChangePasswordScreen() {
   const onSubmit = async (values: ChangePasswordSchemaType) => {
     setSubmitError(null);
     setLoading(true);
+    const expected = session.current();
     try {
       await updateData('/user/password', values);
-      Alert.alert('Password changed', 'Your password has been updated.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
-    } catch (err: any) {
-      const message =
-        err?.response?.data?.message ?? 'Could not change your password. Try again.';
-      setSubmitError(Array.isArray(message) ? message[0] : message);
+      if (!session.isCurrent(expected)) return;
+      await logoutAndRedirect(expected);
+      Alert.alert('Password changed', 'Your password has been updated. Sign in again with your new password.');
+    } catch (err) {
+      setSubmitError(getUserFacingError(err, 'Could not change your password. Check your current password and try again.'));
     } finally {
       setLoading(false);
     }
@@ -55,6 +58,7 @@ export default function ChangePasswordScreen() {
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    keyboardVerticalOffset={headerHeight}
     >
     <ScrollView
       style={styles.scroll}
@@ -117,12 +121,6 @@ export default function ChangePasswordScreen() {
           )}
         />
 
-        {submitError && (
-          <StaxisText variant="formHint" style={{ color: Palette.signal }}>
-            {submitError}
-          </StaxisText>
-        )}
-
         <StaxisButton
           label={loading ? '' : 'Update password'}
           onPress={handleSubmit(onSubmit)}
@@ -131,6 +129,7 @@ export default function ChangePasswordScreen() {
           icon={loading ? <ActivityIndicator color={Palette.bone} /> : undefined}
         />
       </ScrollView>
+      <ErrorModal message={submitError} onDismiss={() => setSubmitError(null)} />
     </KeyboardAvoidingView>
   );
 }
